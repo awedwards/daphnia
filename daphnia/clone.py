@@ -99,7 +99,7 @@ class Clone(object:
         y = np.array(y)
         return np.linalg.norm(x-y)
     
-    def fit_ellipse(self, im, chi_2):
+    def fit_ellipse(self, im, chi_2, **kwargs):
         
         # fit an ellipse to the animal pixels
 
@@ -141,7 +141,7 @@ class Clone(object:
             print "Error fitting ellipse: " + str(e)
             return
 
-    def find_eye(self, im, sigma=0.5):
+    def find_eye(self, im, sigma=0.5, **kwargs):
 
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, sigma), dtype=np.uint8), 0, 50)/255
@@ -180,7 +180,7 @@ class Clone(object:
         except (TypeError, IndexError):
             self.find_eye(im, sigma=sigma+0.25)
     
-    def count_animal_pixels(self, im, sigma=1.0):
+    def count_animal_pixels(self, im, sigma=1.0, **kwargs):
         
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, sigma), dtype=np.uint8), 0, 50)/255
@@ -236,7 +236,7 @@ class Clone(object:
 
         self.animal_length_pixels = self.dist(self.head, self.tail)
 
-    def mask_antenna(self, im, sigma=1.5, canny_thresholds=[0,50], cc_threhsold=125, a = 0.7, b=20, c=2):
+    def mask_antenna(self, im, sigma=1.5, canny_thresholds=[0,50], cc_threhsold=125, a = 0.7, b=20, c=2, **kwargs):
         ex, ey = self.eye_x_center, self.eye_y_center
 
         high_contrast_im = self.high_contrast(im)
@@ -324,9 +324,9 @@ class Clone(object:
         self.anterior_mask_endpoints = (top1, top2)
         self.posterior_mask_endpoints = (bot1, bot2)
         
-    def get_anatomical_directions(self, im, sigma=3, flag="animal"):
+    def get_anatomical_directions(self, im, chi2=3, flag="animal", **kwargs):
 
-        x, y, major, minor, theta = self.fit_ellipse(im, sigma)
+        x, y, major, minor, theta = self.fit_ellipse(im, chi2)
         self.animal_x_center, self.animal_y_center, self.animal_major, self.animal_minor, self.animal_theta = x, y, major, minor, theta
         
         major_vertex_1 = (x - 0.5*major*np.sin(theta), y - 0.5*major*np.cos(theta))
@@ -356,7 +356,7 @@ class Clone(object:
         self.ven_vec = [self.animal_x_center - self.ventral[0], self.animal_y_center - self.ventral[1]]
         self.ant_vec = [self.animal_x_center - self.anterior[0], self.animal_y_center - self.anterior[1]]
        
-    def find_head(self, im, sigma=1.0):
+    def find_head(self, im, sigma=1.0, **kwargs):
 
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, sigma=1), dtype=np.uint8), 0, 50)/255
@@ -397,7 +397,7 @@ class Clone(object:
             # if head edge can't be found, just estimate based on dorsal eye point
             self.head = edx - (-0.05*d*(edx - tx))/d, edy - (-0.05*d*(edy - ty))/d
 
-    def find_tail(self, im, sigma=1.5, n=100):
+    def find_tail(self, im, sigma=1.5, n=100, **kwargs):
          
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, sigma), dtype=np.uint8), 0, 50)/255
@@ -430,13 +430,13 @@ class Clone(object:
         if self.tail == None:
             self.tail = self.tail_tip
 
-    def initialize_pedestal(self, im):
+    def initialize_pedestal(self, im, sigma=1.25, n=400, **kwargs):
         
         ex, ey = self.eye_x_center, self.eye_y_center
         tx, ty = self.tail_tip[0], self.tail_tip[1]
 
         hc = self.high_contrast(im)
-        edges = cv2.Canny(np.array(255*gaussian(hc, 1.25), dtype=np.uint8), 0, 50)/255
+        edges = cv2.Canny(np.array(255*gaussian(hc, sigma), dtype=np.uint8), 0, 50)/255
 
         m = (ty - ey)/(tx - ex)
         b = ey - m*ex
@@ -455,8 +455,8 @@ class Clone(object:
         xx1, yy1 = self.orth(p1, d*0.25, m2)
         xx2, yy2 = self.orth(p2, d*0.25, m2)
 
-        bsx, bsy = np.linspace(p1[0], p2[0], 400), np.linspace(p1[1], p2[1], 400)
-        xx, yy = np.linspace(xx1, xx2, 400), np.linspace(yy1, yy2, 400)
+        bsx, bsy = np.linspace(p1[0], p2[0], n), np.linspace(p1[1], p2[1], n)
+        xx, yy = np.linspace(xx1, xx2, n), np.linspace(yy1, yy2, n)
 
         self.baseline = np.array([bsx, bsy]).T
         self.pedestal = np.array([xx, yy]).T
@@ -482,7 +482,7 @@ class Clone(object:
         else:
             return x1, y1
 
-    def fit_pedestal(self, im, sigma=1):
+    def fit_pedestal(self, im, sigma=1, **kwargs):
 
         if self.pedestal is np.nan: self.initialize_pedestal(im)
         
@@ -602,7 +602,7 @@ class Clone(object:
 
         return (x - np.min(x)) / (np.max(x) - np.min(x))
 
-    def analyze_pedestal(self, ma=12, w_p=80, deg=3):
+    def analyze_pedestal(self, ma=12, w_p=80, deg=3, **kwargs):
     
         # ma = window for moving average
         # w_p = lower percentile for calculating polynomial model
