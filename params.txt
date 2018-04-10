@@ -1,0 +1,20 @@
+fit_ellipse_chi2,3 
+find_eye_blur, 0.5
+canny_minval, 0
+canny_maxval, 50
+count_animal_pixels_blur, 1.0
+count_animal_pixels_n, 100
+mask_antenna_blur, 1.5
+mask_antenna_cnx_comp_threshold, 125
+mask_antenna_coronal_tilt, 0.7
+mask_antenna_anterior_tilt, 20
+mask_antenna_posterior_tilt, 2
+find_head_blur, 1.0
+find_tail_blur, 1.5
+find_tail_n, 100
+pedestal_n, 400
+initialize_pedestal_blur, 1.25
+fit_pedestal_blur, 1
+analyze_pedestal_moving_avg_window, 12
+analyze_pedestal_percentile, 80
+analyze_pedestal_polyfit_degree, 3
