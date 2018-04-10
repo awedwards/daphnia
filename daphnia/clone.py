@@ -4,15 +4,16 @@ import pandas as pd
 import os
 import cv2
 import scipy
-import scipy.ndimage
+from scipy.ndimage import map_coordinates as mc
 from skimage import measure
 from skimage.filters import gaussian
-from collections import defaultdict
 
-class Clone(object):
+class Clone(object:
     
-    def __init__(self,im):
+    def __init__(self, filepath):
         
+        self.filepath = filepath
+
         self.total_animal_pixels = np.nan
         self.animal_area = np.nan
         self.total_eye_pixels = np.nan
@@ -534,7 +535,7 @@ class Clone(object):
     def find_edge(self, im, p1, p2, t1=0.1, npoints=400, lp=np.nan, t2=2):
 
         xx, yy = np.linspace(p1[1], p2[1], npoints), np.linspace(p1[0], p2[0], npoints)
-        zi = scipy.ndimage.map_coordinates(im, np.vstack((yy, xx)), mode="nearest")
+        zi = mc(im, np.vstack((yy, xx)), mode="nearest")
         zi = pd.rolling_mean(zi, 4)
 
         for i in xrange(len(zi)):
