@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
         name="daphnia",
         version="0.1",
-        py_modules = ['daphnia'],
+        packages=find_packages(),
         install_requires=['Click',
             'numpy==1.13.0',
             'scipy==0.19.1',
@@ -12,6 +12,6 @@ setup(
             ],
         entry_points='''
             [console_scripts]
-            daphnia=daphnia:main
+            daphnia=daphnia.scripts.run_daphnia:daphnia
         ''',
 )

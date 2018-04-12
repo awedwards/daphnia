@@ -8,7 +8,7 @@ from scipy.ndimage import map_coordinates as mc
 from skimage import measure
 from skimage.filters import gaussian
 
-class Clone(object:
+class Clone(object):
     
     def __init__(self, filepath):
         
@@ -413,11 +413,11 @@ class Clone(object:
         
         m = (ty - ey)/(tx - ex)
         
-        x, y = np.linspace(tx, ex, n), np.linspace(ty, ey, n)
+        x, y = np.linspace(tx, ex, find_tail_n), np.linspace(ty, ey, find_tail_n)
 
         d = self.dist((tx, ty), (ex, ey))/8
 
-        for i in xrange(n):
+        for i in xrange(int(find_tail_n)):
             p1, p2 = self.orth((x[i], y[i]), d, m, "both")
 
             if self.dist(self.ventral, p1) < self.dist(self.ventral, p2):
@@ -608,18 +608,19 @@ class Clone(object:
 
         return (x - np.min(x)) / (np.max(x) - np.min(x))
 
-    def analyze_pedestal(self, analyze_pedestal_moving_avg_window=12, analyze_pedestal_percentile=80, analyze_pedestal_polyfit_degree=3, **kwargs):
+    def analyze_pedestal(self, analyze_pedestal_moving_avg_window=12, analyze_pedestal_percentile=80, analyze_pedestal_polyfit_degree=3, pedestal_n=400, **kwargs):
     
         # ma = window for moving average
         # w_p = lower percentile for calculating polynomial model
         # deg = degree of polynomial model
 
-        self.interpolate()
+        self.interpolate(pedestal_n)
         p = self.interp_pedestal
 
         # smooth pedestal
-        s = pd.rolling_mean(p, analyze_pedestal_moving_avg_window)
-        s[0:analyze_pedestal_moving_avg_window, :] = p[0:analyze_pedestal_moving_avg_window, :]
+        window = int(analyze_pedestal_moving_avg_window)
+        s = pd.rolling_mean(p, window)
+        s[0:window, :] = p[0:window, :]
 
         p1 = s[0, :]
         p2 = s[-1, :]
@@ -715,7 +716,7 @@ class Clone(object:
 
         self.pedestal_area_pixels = np.abs(np.sum((y[1:] + y[:-1])*(x[1:] - x[:-1])/2))
 
-    def interpolate(self):
+    def interpolate(self, pedestal_n):
 
         p = self.pedestal
         p = np.array([list(x) for x in p])
@@ -745,7 +746,7 @@ class Clone(object:
 
         end = idx[-1]
         
-        for i in xrange(end+1, n):
+        for i in xrange(end+1, int(pedestal_n)):
             new_idx.append(i)
             new_p.append(p[p.shape[0]-1,:])
             
