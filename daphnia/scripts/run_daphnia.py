@@ -2,13 +2,12 @@ import click
 import cv2
 import sys, os
 from daphnia.clone import Clone
+from daphnia.daphnia_plot import plot as daphnia_plot
+from ast import literal_eval
 
-def analyze_clone(clone, params):
+def analyze_clone(clone, im, params):
 
     try:
-
-        im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
-
         clone.find_eye(im, **params)
 
         clone.mask_antenna(im, **params)
@@ -68,12 +67,29 @@ def write_clone(clone, cols, output, ped_output):
     except (IOError, AttributeError) as e:
         print "Can't write data for " + clone.filepath + " to file: " + str(e)
 
+def myParse(params):
+    
+    params_dict = {}
+
+    with open(params) as f:
+        for line in f:
+            if not line.startswith("#"):
+                try:
+                    param_name, param_value = line.split(',') 
+                    try:
+                        params_dict[param_name] = literal_eval(param_value.strip())
+                    except (ValueError, SyntaxError):
+                        params_dict[param_name] = param_value.strip()
+                except ValueError:
+                    pass
+    return params_dict
+
 @click.command()
 @click.option('--params', default='params.txt', help='Path to parameter file.')
-@click.option('--output', default='daphnia_output.txt', help='Path to output file.')
-@click.option('--pedoutput',default='pedestal_output.txt', help='Path to output file for pedestal fit data.')
-@click.argument('i', nargs=-1,type=click.Path(exists=True))
-def daphnia(params, i, output, pedoutput):
+@click.option('--plot', is_flag=True, help='Generates overlay on input image')
+@click.option('--plot_params', default='plot_params.txt', help='Path to plot parameter file.')
+@click.argument('images', nargs=-1,type=click.Path(exists=True))
+def daphnia(params, images, plot, plot_params):
     
     DATA_COLS = ["filepath",
             "total_animal_pixels",
@@ -101,7 +117,6 @@ def daphnia(params, i, output, pedoutput):
             "ventral_mask_endpoints",
             "dorsal_mask_endpoints",
             "anterior_mask_endpoints",
-            "posterior_mask_endpoints",
             "pedestal_max_height_pixels",
             "pedestal_area_pixels",
             "poly_coeff",
@@ -110,23 +125,23 @@ def daphnia(params, i, output, pedoutput):
             "deyecenter_pedestalmax_pixels"]
 
 
-    if params:
-        params_dict = {}
+    params_dict = myParse(params)
 
-        with open(params) as f:
-            line = f.readline()
-            while line:
-                param_name, param_value = line.split(',')
-                params_dict[param_name] = float(param_value.strip())
-                line = f.readline()
-    
-    for image_filepath in i:
+    if plot:
+        plot_params_dict = myParse(plot_params)
+
+    for image_filepath in images:
+        
+        click.echo('Analyzing {0}'.format(image_filepath))
         
         clone = Clone(image_filepath)
-        analyze_clone(clone, params_dict)
-        write_clone(clone, DATA_COLS, output, pedoutput)
+        im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
+        analyze_clone(clone, im, params_dict)
+        write_clone(clone, DATA_COLS, params_dict['output'], params_dict['ped_output'])
 
-        click.echo('Analyzing {0}'.format(image_filepath))
+        if plot:
+            daphnia_plot(clone, im, plot_params_dict)
+            
 
 if __name__ == '__main__':
     daphnia()
