@@ -67,7 +67,6 @@ class Clone(object):
         self.ventral_mask_endpoints = np.nan
         self.dorsal_mask_endpoints = np.nan
         self.anterior_mask_endpoints = np.nan
-        self.posterior_mask_endpoints = np.nan
 
         # these are actual points on the animal
 
@@ -329,8 +328,8 @@ class Clone(object):
             (self.ventral_mask_endpoints[1][0] + 0.05*shift[0],
                 self.ventral_mask_endpoints[1][1] + 0.05*shift[1]))
         self.anterior_mask_endpoints = (top1, top2)
-        self.posterior_mask_endpoints = (bot1, bot2)
-        
+        self.edge_copy = edge_copy
+
     def get_anatomical_directions(self, im, fit_ellipse_chi2=3, flag="animal", **kwargs):
 
         x, y, major, minor, theta = self.fit_ellipse(im, fit_ellipse_chi2)
