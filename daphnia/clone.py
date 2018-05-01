@@ -936,17 +936,7 @@ class Clone(object):
         b = p1[1] - m*p1[0]
         h = np.abs(-m*s[:,0] + s[:,1] - b)/np.sqrt(m**2 + 1)
         ipeak = np.argmax(h)
-        threshold = np.percentile(h, w_p)
-
-        for j in xrange(ipeak, len(h)):
-            if h[j] <= threshold:
-                qub = j
-                break
-        for j in xrange(ipeak, 0, -1):
-            if h[j] <= threshold:
-                qlb = j
-                break
-
+        
         self.peak = p[ipeak]
         
         m1 = ((s[ipeak-1,1]-s[ipeak+1,1])/(s[ipeak-1,0]-s[ipeak+1,0]))
@@ -961,28 +951,18 @@ class Clone(object):
         qx -= np.min(qx)
         qy -= np.min(qy)
 
-        X = np.transpose(np.vstack([np.concatenate([qx[:qlb], qx[qub:]]), np.concatenate([qy[:qlb], qy[qub:]])]))
+        threshold = np.percentile(qy, w_p)
+        roi_index = np.where(qy < threshold)
 
+        X = np.transpose(np.vstack([ qx[roi_index], qy[roi_index] ]))
         self.poly_coeff, res, _, _, _ = np.polyfit(X[:,0], X[:,1], deg, full=True)
         self.res = res[0]
         poly = np.poly1d(self.poly_coeff)
         
         yy = poly(qx)
         diff = qy - yy
-        diff[np.where(diff<0)] = 0
         
-        lb, ub = 0, 0
-
-        for j in xrange(ipeak, len(diff)):
-            if diff[j] == 0:
-                ub = j
-                break
-        for j in xrange(ipeak, 0, -1):
-            if diff[j] == 0:
-                lb = j
-                break
-          
-        self.calc_pedestal_area(qx[lb:ub], diff[lb:ub])
+        self.calc_pedestal_area(qx[roi_index], diff[roi_index])
         
         try:
             self.pedestal_max_height_pixels = np.max(diff[lb:ub])
