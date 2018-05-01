@@ -4,10 +4,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import os
 
-def plot_eye_mask(clone, eye_mask=0, eye_mask_color="yellow", eye_mask_alpha=0.1,**kwargs):
+def plot_eye_mask(clone, eye_mask=0, eye_mask_color="yellow", eye_mask_alpha=0.1, eye_mask_markersize=1,**kwargs):
     
     if eye_mask:
-        plt.scatter(clone.eye_pts[:,1], clone.eye_pts[:,0],c=eye_mask_color,alpha=eye_mask_alpha)
+        plt.scatter(clone.eye_pts[:,1], clone.eye_pts[:,0],c=eye_mask_color,alpha=eye_mask_alpha,s=eye_mask_markersize)
 
 def plot_antenna_mask(clone, im, antenna_mask=0, antenna_mask_color="blue", antenna_mask_linewidth=3, **kwargs):
 
@@ -113,4 +113,4 @@ def plot(clone, im, plot_params):
     
     plt.imshow(im, cmap="gray")
     plt.axis('off')
-    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], "daphnia_" + clone.filepath.split("/")[-1].replace("bmp", "png") ), bbox_inches="tight")
+    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], "daphnia_" + clone.filepath.split("/")[-1].replace("bmp", "eps") ), format='eps', dpi=300)

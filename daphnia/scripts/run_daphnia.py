@@ -7,7 +7,7 @@ from ast import literal_eval
 
 def analyze_clone(clone, im, params):
 
-    try:
+#    try:
         clone.find_eye(im, **params)
 
         clone.mask_antenna(im, **params)
@@ -23,8 +23,8 @@ def analyze_clone(clone, im, params):
         clone.fit_pedestal(im, **params)
         clone.analyze_pedestal(**params)
 
-    except Exception as e:
-        print "Error analyzing " + clone.filepath + ": " + str(e)
+#    except Exception as e:
+#        print "Error analyzing " + clone.filepath + ": " + str(e)
 
 def write_clone(clone, cols, output, ped_output):
     

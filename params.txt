@@ -2,8 +2,9 @@ fit_ellipse_chi2,3
 find_eye_blur, 0.5
 canny_minval, 0
 canny_maxval, 50
-count_animal_pixels_blur, 1.0
-count_animal_pixels_n, 100
+count_animal_pixels_blur, 1.5
+count_animal_pixels_n, 200
+count_animal_pixels_cc_threshold, 15
 mask_antenna_blur, 1.5
 mask_antenna_cnx_comp_threshold, 125
 mask_antenna_coronal_tilt, 0.7
@@ -18,5 +19,5 @@ fit_pedestal_blur, 1
 analyze_pedestal_moving_avg_window, 12
 analyze_pedestal_percentile, 80
 analyze_pedestal_polyfit_degree, 3
-output, /home/austin/scripts/daphnia/daphnia_output.txt
-ped_output, /home/austin/scripts/daphnia/pedestal_output.txt
+output, /Users/edwardsa/Documents/bergland/daphnia/daphnia_output.txt
+ped_output, /Users/edwardsa/Documents/bergland/daphnia/pedestal_output.txt

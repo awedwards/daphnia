@@ -179,7 +179,7 @@ class Clone(object):
         except (TypeError, IndexError):
             self.find_eye(im, find_eye_blur=find_eye_blur+0.25)
     
-    def count_animal_pixels(self, im, count_animal_pixels_blur=1.0, count_animal_pixels_n=100, canny_minval=0, canny_maxval=50, **kwargs):
+    def count_animal_pixels(self, im, count_animal_pixels_blur=1.0, count_animal_pixels_n=100, count_animal_pixels_cc_threshold=10, canny_minval=0, canny_maxval=50, **kwargs):
         
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, count_animal_pixels_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
@@ -229,9 +229,10 @@ class Clone(object):
         cc = [[]]
         idx = 0
         connected = False
+        pts = np.array(pts)
 
         for i in xrange(1, pts.shape[0]-1):
-            if (self.dist(pts[i,:], pts[i-1,:]) < 15) or (self.dist(pts[i+1,:],pts[i,:]) < 15):
+            if (self.dist(pts[i,:], pts[i-1,:]) < count_animal_pixels_cc_threshold) or (self.dist(pts[i+1,:],pts[i,:]) < count_animal_pixels_cc_threshold):
                 try:
                     cc[idx].append(pts[i,:])
                     connected = True
