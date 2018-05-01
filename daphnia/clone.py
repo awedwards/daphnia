@@ -473,7 +473,7 @@ class Clone(object):
 
         r = 2*self.dist((cx, cy), self.anterior)
 
-        s = np.linspace(0, 2*np.pi, 100)
+        s = np.linspace(0, 2*np.pi, 200)
         x = cx + int(r)*np.sin(s)
         y = cy + int(r)*np.cos(s)
 
