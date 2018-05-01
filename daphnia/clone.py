@@ -502,7 +502,6 @@ class Clone(object):
             if edge_pt is not None:
                 pts.append((edge_pt[1], edge_pt[0]))
 
-        self.whole_animal_points = pts
         pts = np.array(pts)
         
         cc = [[]]
@@ -528,8 +527,9 @@ class Clone(object):
                         connected = False
                 except IndexError:
                     pass
-        
-        cc = np.vstack(cc)
+         
+        pts = np.vstack(cc)
+        self.whole_animal_points = pts
         self.total_animal_pixels = self.area(pts[:,0], pts[:,1])
 
     def get_animal_area(self):
