@@ -33,16 +33,23 @@ def write_clone(clone, cols, output, ped_output):
             raise OSError
     except (OSError):
 	print "Starting new output file"
-	with open(output, "wb+") as f:
-	    f.write( "\t".join(cols) + "\n")
+        try:
+	    with open(output, "wb+") as f:
+	        f.write( "\t".join(cols) + "\n")
+        except IOError:
+            print "Can't find desired location for saving data"
 
     try:
    	if os.stat(ped_output).st_size == 0:
             raise OSError
     except (OSError):
 	print "Starting new pedestal output file"
-	with open(ped_output, "wb+") as f:
-	    f.write( "\t".join(["filepath","pedestal_data"]) + "\n")
+
+        try:
+	    with open(ped_output, "wb+") as f:
+	        f.write( "\t".join(["filepath","pedestal_data"]) + "\n")
+        except IOError:
+            print "Can't find desired location for saving data"
 
     try:
         with open(output, "ab+") as f:
