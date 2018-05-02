@@ -952,9 +952,10 @@ class Clone(object):
         qy -= np.min(qy)
 
         threshold = np.percentile(qy, w_p)
-        roi_index = np.where(qy < threshold)
+        poly_train = np.where(qy < threshold)
+        roi = np.where(qy >= threshold)
 
-        X = np.transpose(np.vstack([ qx[roi_index], qy[roi_index] ]))
+        X = np.transpose(np.vstack([ qx[poly_train], qy[poly_train] ]))
         self.poly_coeff, res, _, _, _ = np.polyfit(X[:,0], X[:,1], deg, full=True)
         self.res = res[0]
         poly = np.poly1d(self.poly_coeff)
@@ -962,13 +963,8 @@ class Clone(object):
         yy = poly(qx)
         diff = qy - yy
         
-        self.calc_pedestal_area(qx[roi_index], diff[roi_index])
-        
-        try:
-            self.pedestal_max_height_pixels = np.max(diff[lb:ub])
-        except ValueError:
-            # if there is no section of pedestal that is higher than predictive model, set max height to 0
-            self.pedestal_max_height_pixels = 0.0
+        self.calc_pedestal_area(qx[roi], diff[roi])
+        self.pedestal_max_height_pixels = np.max(diff[roi])
 
         self.pedestal_max_height = self.pedestal_max_height_pixels/self.pixel_to_mm
         self.get_deye_pedestalmax()
