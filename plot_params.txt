@@ -1,6 +1,7 @@
 daphnia_plot_dir, /Users/edwardsa/Documents/bergland/paper/
+daphnia_plot_name, landmarks
 
-eye_mask, 0
+eye_mask, 1
 eye_mask_color, yellow
 eye_mask_alpha, 0.1
 eye_mask_markersize,1
@@ -21,17 +22,21 @@ landmark_color, red
 landmark_style, pixel
 landmark_size, 5
 
-animal_length_plot, 0
+animal_length_plot, 1
 animal_length_plot_color, black
 animal_length_linewidth, 5
 
-animal_perimeter, 0
+tail_spine_length_plot, 1
+tail_spine_length_plot_color, black
+tail_spine_length_linewidth, 5
+
+animal_perimeter, 1
 # line vs points
 animal_perimeter_style, line
 animal_perimeter_color, green
 animal_perimeter_linewidth, 5
 
-pedestal_plot, 1
+pedestal_plot, 0
 pedestal_plot_color, red
 pedestal_plot_alpha, 1
 pedestal_plot_marker_size, 2

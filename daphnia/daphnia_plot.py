@@ -74,6 +74,14 @@ def plot_animal_length(clone, animal_length_plot=1, animal_length_plot_color="bl
 
         plt.plot( (clone.tail[1], clone.head[1]), (clone.tail[0], clone.head[0]), c=animal_length_plot_color, linewidth=animal_length_linewidth)
 
+def plot_tail_spine_length(clone, tail_spine_length_plot=1, tail_spine_length_plot_color="black", tail_spine_length_linewidth=2, **kwargs):
+
+    if tail_spine_length_plot:
+
+        plt.plot( (clone.tail[1], clone.tail_tip[1]), (clone.tail[0], clone.tail_tip[0]), c=tail_spine_length_plot_color, linewidth=tail_spine_length_linewidth)
+
+
+
 def plot_animal_perimeter(clone, animal_perimeter=1, animal_perimeter_style="line", animal_perimeter_color="green", **kwargs):
 
     if animal_perimeter:
@@ -108,9 +116,11 @@ def plot(clone, im, plot_params):
     plot_antenna_mask(clone, im, **plot_params)
     plot_landmarks(clone, **plot_params)
     plot_animal_length(clone, **plot_params)
+    plot_tail_spine_length(clone, **plot_params)
     plot_animal_perimeter(clone, **plot_params)
     plot_pedestal(clone, **plot_params)
     
     plt.imshow(im, cmap="gray")
     plt.axis('off')
-    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], "daphnia_" + clone.filepath.split("/")[-1].replace("bmp", "eps") ), format='eps', dpi=300)
+
+    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], plot_params["daphnia_plot_name"] + ".eps" ), format='eps', dpi=300)
