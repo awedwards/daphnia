@@ -56,3 +56,22 @@ def mean_shape(shapes):
     y_coords = np.vstack(shapes[:, 1::2])
 
     return np.vstack( (np.mean(x_coords, axis=1), np.mean(y_coords, axis=1)) )
+
+def align(p, landmark1, landmark2, left, right):
+    """
+    Align pedestal to landmarks given a left/right anchor
+    """
+
+    x1, y1 = landmark1[:,0], landmark1[:,1]
+    x2, y2 = landmark2[:,0], landmark2[:,1]
+
+    m1 = (y2 - y1)/(x2 - x1)
+    b1 = y1 - m1*x1
+
+    m2 = -1/m1
+    b2 = p[:, 1::2] - p[:,0::2]*m2
+
+    x_int = (b2 - b1)/(m1 - m2)
+    y_int = m2*x_int + b2
+
+
