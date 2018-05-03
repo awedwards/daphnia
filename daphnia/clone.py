@@ -13,14 +13,14 @@ from collections import defaultdict
 
 class Clone(object):
     
-    def __init__(self,filebase,imtype,barcode,pond_cloneid,treatment,replicate,rig,datetime,induction,pond,cid,season,datadir,clf=None):
+    def __init__(self,filebase,imtype,barcode,pond_cloneid,treatment,replicate,rig,datetime,induction,pond,cid,season,datadir,clf=np.nan):
         
         self.imtype = imtype
         self.cloneid = pond_cloneid
         self.pond = pond
         self.id = cid
         self.season = season
-        self.sampling = None
+        self.sampling = np.nan
         
         if self.cloneid in ["D8_183","D8_191","D8_213","DBunk_90","DBunk_131","DBunk_132"]:
             self.control = True
@@ -43,77 +43,78 @@ class Clone(object):
         if os.path.isfile(os.path.join(datadir, "fullMicro_" + self.filebase)):
             self.micro_filepath = os.path.join(datadir, "fullMicro_" + self.filebase)
         else:
-            self.micro_filepath = None
+            self.micro_filepath = np.nan
 
-        self.total_animal_pixels = None
-        self.animal_area = None
-        self.total_eye_pixels = None
-        self.eye_area = None
-        self.animal_length_pixels = None
-        self.animal_length = None
-        self.pedestal = None
-        self.ipedestal = None
+        self.total_animal_pixels = np.nan
+        self.animal_area = np.nan
+        self.total_eye_pixels = np.nan
+        self.eye_area = np.nan
+        self.animal_length_pixels = np.nan
+        self.animal_length = np.nan
+        self.pedestal = np.nan
+        self.ipedestal = np.nan
         self.binned_pedestal_data = []
-        self.pedestal_area = None
-        self.pedestal_theta = None
-        self.snake = None
-        self.pixel_to_mm = None
+        self.pedestal_area = np.nan
+        self.pedestal_theta = np.nan
+        self.snake = np.nan
+        self.pixel_to_mm = np.nan
         
-        self.pedestal_max_height_pixels = None
-        self.pedestal_area_pixels = None
-        self.pedestal_max_height = None
-        self.pedestal_area = None
+        self.pedestal_max_height_pixels = np.nan
+        self.pedestal_area_pixels = np.nan
+        self.pedestal_max_height = np.nan
+        self.pedestal_area = np.nan
 
-        self.pedestal_window_max_height_pixels = None
-        self.pedestal_window_area_pixels = None
-        self.pedestal_window_max_height = None
-        self.pedestal_window_area = None
+        self.pedestal_window_max_height_pixels = np.nan
+        self.pedestal_window_area_pixels = np.nan
+        self.pedestal_window_max_height = np.nan
+        self.pedestal_window_area = np.nan
 
-        self.animal_x_center = None
-        self.animal_y_center = None
-        self.animal_major = None
-        self.animal_minor = None
-        self.animal_theta = None
+        self.animal_x_center = np.nan
+        self.animal_y_center = np.nan
+        self.animal_major = np.nan
+        self.animal_minor = np.nan
+        self.animal_theta = np.nan
         
-        self.eye_x_center = None
-        self.eye_y_center = None
-        self.eye_major = None
-        self.eye_minor = None
-        self.eye_theta = None
+        self.eye_x_center = np.nan
+        self.eye_y_center = np.nan
+        self.eye_major = np.nan
+        self.eye_minor = np.nan
+        self.eye_theta = np.nan
 
         # these are directional vectors of anatomical direction starting at origin
         
-        self.anterior = None
-        self.posterior = None
-        self.dorsal = None
-        self.ventral = None
+        self.anterior = np.nan
+        self.posterior = np.nan
+        self.dorsal = np.nan
+        self.ventral = np.nan
         
         # these are directional vectors of anatomical direction starting at animal center
-        self.ant_vec = None
-        self.pos_vec = None
-        self.dor_vec = None
-        self.ven_vec = None
+        self.ant_vec = np.nan
+        self.pos_vec = np.nan
+        self.dor_vec = np.nan
+        self.ven_vec = np.nan
 
         # endpoints for masking antenna
-        self.ventral_mask_endpoints = None
-        self.dorsal_mask_endpoints = None
-        self.anterior_mask_endpoints = None
-        self.posterior_mask_endpoints = None
+        self.ventral_mask_endpoints = np.nan
+        self.dorsal_mask_endpoints = np.nan
+        self.anterior_mask_endpoints = np.nan
+        self.posterior_mask_endpoints = np.nan
 
         # these are actual points on the animal
 
-        self.eye_dorsal = None
-        self.head = None
-        self.tail = None
-        self.tail_tip = None
-        self.dorsal_point = None
-        self.tail_spine_length_pixels = None
-        self.tail_spine_length = None
-        self.peak = None
-        self.deyecenter_pedestalmax_pixels = None
-        self.deyecenter_pedestalmax = None
-        self.poly_coeff = None
-        self.res = None
+        self.eye_dorsal = np.nan
+        self.head = np.nan
+        self.tail = np.nan
+        self.tail_tip = np.nan
+        self.tail_base = np.nan
+        self.dorsal_point = np.nan
+        self.tail_spine_length_pixels = np.nan
+        self.tail_spine_length = np.nan
+        self.peak = np.nan
+        self.deyecenter_pedestalmax_pixels = np.nan
+        self.deyecenter_pedestalmax = np.nan
+        self.poly_coeff = np.nan
+        self.res = np.nan
 
         # quality check flags
         self.automated_PF = "U"
@@ -126,7 +127,7 @@ class Clone(object):
 
     def convert_treatment(self):
         
-        if self.treatment is not None:
+        if self.treatment is not np.nan:
 
             if self.treatment == 'ctrl':
                 self.treatment = 0.0
@@ -200,7 +201,7 @@ class Clone(object):
                     img = cv2.medianBlur(img,5)
                     circles = cv2.HoughCircles(img,cv2.HOUGH_GRADIENT,1,20,
                                                param1=50,param2=50,minRadius=300)
-                    if circles is None:
+                    if circles is np.nan:
                         return self.crop(img[int(w/2):,:])
                     else:
                         circle = np.mean(np.array(circles[0]),axis=0)
@@ -296,7 +297,7 @@ class Clone(object):
 
         edge_threshold = 175
         sum_edges = w*h
-        lines = None
+        lines = np.nan
 
         while (edge_threshold > 0 and not np.any(lines)):
 
@@ -309,7 +310,7 @@ class Clone(object):
                 lines = cv2.HoughLines(edges,1,np.pi/180,200,min_line_length)    
                 min_line_length -= 50
         
-        if lines is None:
+        if lines is np.nan:
             print "Could not detect ruler"
             return
 
@@ -448,7 +449,7 @@ class Clone(object):
     
     def get_tail_spine_length(self):
 
-        self.tail_spine_length_pixels = self.dist(self.tail_tip, self.tail)
+        self.tail_spine_length_pixels = self.dist(self.tail_tip, self.tail_base)
         self.tail_spine_length = self.tail_spine_length_pixels/self.pixel_to_mm
 
     def get_eye_area(self):
@@ -499,7 +500,7 @@ class Clone(object):
 
             edge_pt = self.find_edge(edges, p1, p2)
 
-            if edge_pt is not None:
+            if edge_pt is not np.nan:
                 pts.append((edge_pt[1], edge_pt[0]))
 
         pts = np.array(pts)
@@ -729,12 +730,15 @@ class Clone(object):
 
                 if self.dist((edgex, edgey), start) < self.dist(p1, p2)/45:
                     self.tail = (edgex, edgey)
+                    self.tail_base = start
                     break
+
             except TypeError:
                 pass
 
-        if self.tail == None:
+        if self.tail == np.nan:
             self.tail = self.tail_tip
+            self.tail_base = self.tail_tip
 
     def initialize_pedestal(self, im):
         
@@ -790,7 +794,7 @@ class Clone(object):
 
     def fit_pedestal(self, im, sigma=1):
 
-        if self.pedestal is None: self.initialize_pedestal(im)
+        if self.pedestal is np.nan: self.initialize_pedestal(im)
         
         ps = self.pedestal
         bs = self.baseline
@@ -815,10 +819,10 @@ class Clone(object):
             if len(d) > 0:
                 lp = d[-1]
             else:
-                lp = None
+                lp = np.nan
             e = self.find_edge(edges, p2, p1, lp=lp, t2=t2)
             
-            if e is not None:
+            if e is not np.nan:
                 d.append(e)
                 idx.append(i) 
         
@@ -838,7 +842,7 @@ class Clone(object):
         hyp = self.dist((n,0), (x, np.max(data[:,1])))
         self.pedestal_theta = np.arcsin((n - x)/hyp)*(180/np.pi)
 
-    def find_edge(self, im, p1, p2, t1=0.1, npoints=400, lp=None, t2=2):
+    def find_edge(self, im, p1, p2, t1=0.1, npoints=400, lp=np.nan, t2=2):
 
         xx, yy = np.linspace(p1[1], p2[1], npoints), np.linspace(p1[0], p2[0], npoints)
         zi = scipy.ndimage.map_coordinates(im, np.vstack((yy, xx)), mode="nearest")
@@ -846,7 +850,7 @@ class Clone(object):
 
         for i in xrange(len(zi)):
             if zi[i] > t1:
-                if lp is None: return(yy[i], xx[i])
+                if lp is np.nan: return(yy[i], xx[i])
                 elif self.dist((yy[i], xx[i]), lp) < t2:
                     return (yy[i], xx[i])
                 else:
@@ -902,7 +906,7 @@ class Clone(object):
 
         # returns the point of intersection for two line segments
 
-        if not self.intersect(s1, s2): return None
+        if not self.intersect(s1, s2): return np.nan
 
         x1, y1, x2, y2 = s1
         x3, y3, x4, y4 = s2
