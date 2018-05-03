@@ -73,6 +73,7 @@ class Clone(object):
         self.eye_dorsal = np.nan
         self.head = np.nan
         self.tail = np.nan
+        self.tail_base = np.nan
         self.tail_tip = np.nan
         self.dorsal_point = np.nan
 
@@ -454,10 +455,12 @@ class Clone(object):
 
             if self.dist(e, start) < self.dist(p1, p2)/45:
                 self.tail = e
+                self.tail_base = start
                 break
 
         if self.tail == None:
             self.tail = self.tail_tip
+            self.tail_base = self.tail_tip
 
     def initialize_pedestal(self, im, initialize_pedestal_blur=1.25, pedestal_n=400, canny_minval=0, canny_maxval=50,**kwargs):
         
