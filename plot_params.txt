@@ -23,12 +23,13 @@ landmark_size, 5
 
 animal_length_plot, 0
 animal_length_plot_color, black
-animal_length_linewidth, 2
+animal_length_linewidth, 5
 
 animal_perimeter, 0
 # line vs points
 animal_perimeter_style, line
 animal_perimeter_color, green
+animal_perimeter_linewidth, 5
 
 pedestal_plot, 1
 pedestal_plot_color, red

@@ -19,5 +19,5 @@ fit_pedestal_blur, 1
 analyze_pedestal_moving_avg_window, 12
 analyze_pedestal_percentile, 80
 analyze_pedestal_polyfit_degree, 3
-output, /Users/edwardsa/Documents/bergland/daphnia/daphnia_output.txt
-ped_output, /Users/edwardsa/Documents/bergland/daphnia/pedestal_output.txt
+output, daphnia_output.txt
+ped_output, pedestal_output.txt
