@@ -121,6 +121,8 @@ def daphnia(params, images, plot, plot_params):
             "head",
             "tail",
             "tail_tip",
+            "tail_base",
+            "tail_spine_length",
             "ventral_mask_endpoints",
             "dorsal_mask_endpoints",
             "anterior_mask_endpoints",

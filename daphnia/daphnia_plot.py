@@ -78,7 +78,7 @@ def plot_tail_spine_length(clone, tail_spine_length_plot=1, tail_spine_length_pl
 
     if tail_spine_length_plot:
 
-        plt.plot( (clone.tail[1], clone.tail_tip[1]), (clone.tail[0], clone.tail_tip[0]), c=tail_spine_length_plot_color, linewidth=tail_spine_length_linewidth)
+        plt.plot( (clone.tail_base[1], clone.tail_tip[1]), (clone.tail_base[0], clone.tail_tip[0]), c=tail_spine_length_plot_color, linewidth=tail_spine_length_linewidth)
 
 
 
