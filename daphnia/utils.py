@@ -396,5 +396,4 @@ def analyze_clone(clone, flags, pedestal_data=None):
         print "Error during analysis of " + clone.filepath + ": " + str(e)
 
 def load_SVM( path = '', name="daphnia_pedestal_fit_check_SVM_20180219.pkl"):
-
-    return joblib.load(os.path.join(path, name))
+    return
