@@ -730,7 +730,7 @@ class Clone(object):
 
                 if self.dist((edgex, edgey), start) < self.dist(p1, p2)/45:
                     self.tail = (edgex, edgey)
-                    self.tail_base = start
+                    self.tail_base = (x[i], y[i])
                     break
 
             except TypeError:
