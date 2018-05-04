@@ -80,16 +80,14 @@ def plot_tail_spine_length(clone, tail_spine_length_plot=1, tail_spine_length_pl
 
         plt.plot( (clone.tail_base[1], clone.tail_tip[1]), (clone.tail_base[0], clone.tail_tip[0]), c=tail_spine_length_plot_color, linewidth=tail_spine_length_linewidth)
 
-
-
-def plot_animal_perimeter(clone, animal_perimeter=1, animal_perimeter_style="line", animal_perimeter_color="green", **kwargs):
+def plot_animal_perimeter(clone, animal_perimeter=1, animal_perimeter_style="line", animal_perimeter_color="green", animal_perimeter_linewidth=2,**kwargs):
 
     if animal_perimeter:
 
         pts = np.array(clone.whole_animal_points)
         if animal_perimeter_style == "line":
             for i in np.arange(pts.shape[0]-1):
-                plt.plot( (pts[i,0], pts[i+1,0]), (pts[i,1],pts[i+1,1]), c=animal_perimeter_color)
+                plt.plot( (pts[i,0], pts[i+1,0]), (pts[i,1],pts[i+1,1]), c=animal_perimeter_color, linewidth=animal_perimeter_linewidth)
             plt.plot( (pts[0, 0], pts[-1, 0]), (pts[0, 1], pts[-1, 1]), c=animal_perimeter_color)
 
         elif animal_perimeter_style == "points":
