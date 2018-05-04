@@ -455,7 +455,7 @@ class Clone(object):
 
             if self.dist(e, start) < self.dist(p1, p2)/45:
                 self.tail = e
-                self.tail_base = end
+                self.tail_base = (x[i],y[i])
                 break
 
         if self.tail == None:
