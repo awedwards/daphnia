@@ -536,7 +536,6 @@ class Clone(object):
     def get_animal_area(self):
 
         self.animal_area = self.total_animal_pixels/np.power(self.pixel_to_mm, 2)
-
     def get_animal_length(self):
 
         self.animal_length_pixels = self.dist(self.head, self.tail)
@@ -742,21 +741,21 @@ class Clone(object):
 
     def initialize_pedestal(self, im):
         
-        ex, ey = self.eye_x_center, self.eye_y_center
-        tx, ty = self.tail_tip[0], self.tail_tip[1]
+        hx, hy = self.head
+        tx, ty = self.tail
 
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, 1.25), dtype=np.uint8), 0, 50)/255
 
-        m = (ty - ey)/(tx - ex)
-        b = ey - m*ex
+        m = (ty - hy)/(tx - hx)
+        b = hy - m*hx
 
-        d = self.dist((ex, ey), (self.dorsal_mask_endpoints[0][0], self.dorsal_mask_endpoints[0][1]))
+        d = self.dist((hx, hy), (self.dorsal_mask_endpoints[0][0], self.dorsal_mask_endpoints[0][1]))
         
-        x, y = self.orth((ex, ey), d, m, flag="dorsal")
-        p1 = self.find_edge(edges, (x, y), (ex, ey))
+        x, y = self.orth((hx, hy), d, m, flag="dorsal")
+        p1 = self.find_edge(edges, (x, y), (hx, hy))
 
-        mp = 0.67*ex + 0.33*tx, 0.67*ey + 0.33*ty
+        mp = 0.67*hx + 0.33*tx, 0.67*hy + 0.33*ty
 
         x, y = self.orth(mp, d, m, flag="dorsal")
         p2 = self.find_edge(edges, (x, y), mp)
