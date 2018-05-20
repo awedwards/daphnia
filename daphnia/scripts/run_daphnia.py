@@ -4,29 +4,26 @@ import sys, os
 from daphnia.clone import Clone
 from daphnia.daphnia_plot import plot as daphnia_plot
 from ast import literal_eval
+import utils
 
 def analyze_clone(clone, im, params):
 
-#    try:
-        clone.find_eye(im, **params)
+    clone.find_eye(im, **params)
 
-        clone.mask_antenna(im, **params)
-        clone.count_animal_pixels(im, **params)
-        
-        clone.find_tail(im, **params)
-        clone.get_orientation_vectors()
-        clone.find_head(im, **params)
+    clone.mask_antenna(im, **params)
+    clone.count_animal_pixels(im, **params)
+    
+    clone.find_tail(im, **params)
+    clone.get_orientation_vectors()
+    clone.find_head(im, **params)
 
-        clone.get_animal_length()
+    clone.get_animal_length()
 
-        clone.initialize_pedestal(im, **params)
-        clone.fit_pedestal(im, **params)
-        clone.analyze_pedestal(**params)
+    clone.initialize_pedestal(im, **params)
+    clone.fit_pedestal(im, **params)
+    clone.analyze_pedestal(**params)
 
-#    except Exception as e:
-#        print "Error analyzing " + clone.filepath + ": " + str(e)
-
-def write_clone(clone, cols, output, ped_output):
+def write_clone(clone, cols, metadata_fields, metadata, output):
     
     try:
    	if os.stat(output).st_size == 0:
@@ -35,11 +32,11 @@ def write_clone(clone, cols, output, ped_output):
 	print "Starting new output file"
         try:
 	    with open(output, "wb+") as f:
-	        f.write( "\t".join(cols) + "\n")
+                f.write( "\t".join(metadata_fields)+ "\t" + "\t".join(cols) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
-
-    try:
+'''
+    #try:
    	if os.stat(ped_output).st_size == 0:
             raise OSError
     except (OSError):
@@ -50,11 +47,16 @@ def write_clone(clone, cols, output, ped_output):
 	        f.write( "\t".join(["filepath","pedestal_data"]) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
+'''
 
     try:
         with open(output, "ab+") as f:
 
             tmpdata = []
+            for mf in metadata_fields:
+
+                val = metadata[metadata_fields]
+                tmpdata.append( val )
 
             for c in cols:
 
@@ -96,12 +98,13 @@ def myParse(params):
 @click.option('--plot', is_flag=True, help='Generates overlay on input image')
 @click.option('--plot_params', default='plot_params.txt', help='Path to plot parameter file.')
 @click.argument('images', nargs=-1,type=click.Path(exists=True))
+
 def daphnia(params, images, plot, plot_params):
     
     DATA_COLS = ["filepath",
-            "total_animal_pixels",
-            "total_eye_pixels",
-            "animal_length_pixels",
+            "animal_area",
+            "eye_area",
+            "animal_length",
             "animal_x_center",
             "animal_y_center",
             "animal_major",
@@ -126,24 +129,63 @@ def daphnia(params, images, plot, plot_params):
             "ventral_mask_endpoints",
             "dorsal_mask_endpoints",
             "anterior_mask_endpoints",
-            "pedestal_max_height_pixels",
-            "pedestal_area_pixels",
+            "pedestal_max_height",
+            "pedestal_area",
             "poly_coeff",
             "res",
             "peak",
             "deyecenter_pedestalmax_pixels"]
 
-
     params_dict = myParse(params)
 
     if plot:
         plot_params_dict = myParse(plot_params)
+    
+    try:
+        curation_data = utils.load_manual_curation(params_dict['curation_csvpath'])
+    except KeyError:
+        curation_data = False
+
+    try:
+        male_list = utils.load_male_list(params_dict['male_listpath'])
+    except KeyError:
+        male_list = False
+
+    try:
+        inductiondates = load_induction_data(inductiondatadir)
+    except KeyError:
+        inductiondates = False
+    
+    try:
+        pond_season_md = load_pond_season_data(pondseasondir)
+    except KeyError:
+        pond_season_md = False
 
     for image_filepath in images:
         
         click.echo('Analyzing {0}'.format(image_filepath))
         
         clone = Clone(image_filepath)
+        
+        if male_list:
+            if clone.cloneid in male_list:
+                clone.manual_PF = "F"
+                clone.manual_PF_reason = "male"
+                clone.manual_PF_curator = "awe"
+
+        if curation_data:
+
+            if not (clone.manual_PF == 'F'):
+                try:
+                    row = curation_data[clone.filebase]
+                    clone.manual_PF = row['manual_PF'].upper()
+                    clone.manual_PF_reason = row['manual_PF_reason']
+                    clone.manual_PF_curator = row['manual_PF_curator'].lower()
+                except KeyError:
+                    clone.manual_PF = "P"
+                    clone.manual_PF_curator = params_dict['manual_PF_curator'] 
+        
+
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
         analyze_clone(clone, im, params_dict)
         write_clone(clone, DATA_COLS, params_dict['output'], params_dict['ped_output'])

@@ -15,18 +15,12 @@ class Clone(object):
         
         self.filepath = filepath
 
-        self.total_animal_pixels = np.nan
         self.animal_area = np.nan
-        self.total_eye_pixels = np.nan
         self.eye_area = np.nan
-        self.animal_length_pixels = np.nan
         self.animal_length = np.nan
         self.pedestal = np.nan
         self.binned_pedestal_data = []
         self.pedestal_area = np.nan
-        self.pedestal_theta = np.nan
-        self.snake = np.nan
-        self.pixel_to_mm = np.nan
         
         self.pedestal_max_height = np.nan
         self.pedestal_area = np.nan
