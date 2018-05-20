@@ -12,8 +12,8 @@ PONDSEASONFILEPATH = "/mnt/spicy_4/daphnia/analysis/MetadataFiles/season_metadat
 ext = '.bmp'
 
 current = "analysis_results_current.txt"
-out = "tail_spine.txt"
-pedestal = "pedestal_current.txt"
+out = "head_tail_initp_20180509.txt"
+pedestal = "head_tail_initp_pedestal_data_20180509.txt"
 
 analysis = True
 build_clonedata = False
@@ -25,11 +25,11 @@ if analysis == True:
     #flags.append("doEyeAreaCalc")
     #flags.append("doAntennaMasking")
     #flags.append("doAnimalAreaCalc")
-    flags.append("findTail")
+    #flags.append("findTail")
     #flags.append("getOrientationVectors")
     #flags.append("doLength")
-    #flags.append("fitPedestal")
-    #flags.append("doPedestalScore")
+    flags.append("fitPedestal")
+    flags.append("doPedestalScore")
     #flags.append("doQualityCheck")
 
 print "Loading clone data\n"
@@ -40,10 +40,6 @@ try:
     df = utils.csv_to_df(os.path.join(ANALYSISDIR, current))
     loaded = utils.df_to_clonelist(df, datadir=DATADIR)
     
-    #dfout = utils.csv_to_df(os.path.join(ANALYSISDIR, out))
-    #out_loaded = utils.df_to_clonelist(dfout, datadir=DATADIR)
-    
-    #clones = utils.update_clone_list(clones, out_loaded)
     clones = utils.update_clone_list(clones, loaded)
     
     print "Successfully updated clone list"
@@ -81,13 +77,14 @@ cols = ["filebase",
         "posterior",
         "dorsal",
         "ventral",
-	    "ant_vec",
+	"ant_vec",
         "pos_vec",
-	    "dor_vec",
-	    "ven_vec",
+	"dor_vec",
+	"ven_vec",
         "eye_dorsal",
         "head",
         "tail",
+        "tail_base",
         "tail_tip",
         "tail_spine_length_pixels",
         "tail_spine_length",
@@ -97,12 +94,12 @@ cols = ["filebase",
         "posterior_mask_endpoints",
         "pedestal_max_height_pixels",
         "pedestal_area_pixels",
-	    "pedestal_max_height",
-	    "pedestal_area",
+	"pedestal_max_height",
+	"pedestal_area",
         "poly_coeff",
         "res",
-	    "pedestal_max_height",
-	    "pedestal_area",
+	"pedestal_max_height",
+	"pedestal_area",
         "peak",
         "deyecenter_pedestalmax_pixels",
         "deyecenter_pedestalmax",
@@ -121,7 +118,7 @@ except (IOError, OSError):
         f.write( "\t".join(cols) + "\n")
 
 try:
-    "Loading pedestal data"
+    print "Loading pedestal data"
     pedestal_data = utils.load_pedestal_data( os.path.join(ANALYSISDIR, pedestal) )
 except IOError:
     pedestal_data = {}
@@ -155,7 +152,7 @@ if analysis:
 
                             utils.append_pedestal_line(clone.filebase, pedestal_data[clone.filebase], os.path.join(ANALYSISDIR, pedestal))
                             
-                            #utils.analyze_clone(clone, ["doPedestalScore"], pedestal_data=pedestal_data)
+                            utils.analyze_clone(clone, ["doPedestalScore"], pedestal_data=pedestal_data, im=im)
 
                         except Exception as e:
                             print "Failed to fit pedestal for " + clone.filebase + " because of " + str(e)

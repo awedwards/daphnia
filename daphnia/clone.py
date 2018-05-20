@@ -759,7 +759,6 @@ class Clone(object):
 
         x, y = self.orth(mp, d, m, flag="dorsal")
         p2 = self.find_edge(edges, (x, y), mp)
-
         m2 = (p1[1] - p2[1])/(p1[0] - p2[0])
         xx1, yy1 = self.orth(p1, d*0.25, m2)
         xx2, yy2 = self.orth(p2, d*0.25, m2)
@@ -797,7 +796,7 @@ class Clone(object):
         
         ps = self.pedestal
         bs = self.baseline
-
+        
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, sigma), dtype=np.uint8), 0, 50)/255
     
@@ -810,7 +809,7 @@ class Clone(object):
         n = len(snakex)
         t2 = self.dist(bs[0,:], bs[-1,:])/60
 
-        for i in xrange(1,n):
+        for i in xrange(0,n):
 
             p2 = snakex[i], snakey[i]
             p1 = bs[i,0], bs[i,1]
@@ -818,10 +817,10 @@ class Clone(object):
             if len(d) > 0:
                 lp = d[-1]
             else:
-                lp = np.nan
-            e = self.find_edge(edges, p2, p1, lp=lp, t2=t2)
+                lp = None 
             
-            if e is not np.nan:
+            e = self.find_edge(edges, p2, p1, lp=lp, t2=t2)
+            if e is not None:
                 d.append(e)
                 idx.append(i) 
         
@@ -841,7 +840,7 @@ class Clone(object):
         hyp = self.dist((n,0), (x, np.max(data[:,1])))
         self.pedestal_theta = np.arcsin((n - x)/hyp)*(180/np.pi)
 
-    def find_edge(self, im, p1, p2, t1=0.1, npoints=400, lp=np.nan, t2=2):
+    def find_edge(self, im, p1, p2, t1=0.1, npoints=400, lp=None, t2=2):
 
         xx, yy = np.linspace(p1[1], p2[1], npoints), np.linspace(p1[0], p2[0], npoints)
         zi = scipy.ndimage.map_coordinates(im, np.vstack((yy, xx)), mode="nearest")
@@ -849,7 +848,8 @@ class Clone(object):
 
         for i in xrange(len(zi)):
             if zi[i] > t1:
-                if lp is np.nan: return(yy[i], xx[i])
+                if lp is None:
+                    return(yy[i], xx[i])
                 elif self.dist((yy[i], xx[i]), lp) < t2:
                     return (yy[i], xx[i])
                 else:
