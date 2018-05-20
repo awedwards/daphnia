@@ -7,6 +7,7 @@ import scipy
 from scipy.ndimage import map_coordinates as mc
 from skimage import measure
 from skimage.filters import gaussian
+import random
 
 class Clone(object):
     
@@ -21,20 +22,15 @@ class Clone(object):
         self.animal_length_pixels = np.nan
         self.animal_length = np.nan
         self.pedestal = np.nan
-        self.ipedestal = np.nan
         self.binned_pedestal_data = []
         self.pedestal_area = np.nan
         self.pedestal_theta = np.nan
         self.snake = np.nan
         self.pixel_to_mm = np.nan
         
-        self.pedestal_max_height_pixels = np.nan
-        self.pedestal_area_pixels = np.nan
         self.pedestal_max_height = np.nan
         self.pedestal_area = np.nan
 
-        self.pedestal_window_max_height_pixels = np.nan
-        self.pedestal_window_area_pixels = np.nan
         self.pedestal_window_max_height = np.nan
         self.pedestal_window_area = np.nan
 
@@ -78,7 +74,6 @@ class Clone(object):
         self.dorsal_point = np.nan
 
         self.peak = np.nan
-        self.deyecenter_pedestalmax_pixels = np.nan
         self.deyecenter_pedestalmax = np.nan
         self.poly_coeff = np.nan
         self.res = np.nan
@@ -462,36 +457,29 @@ class Clone(object):
             self.tail = self.tail_tip
             self.tail_base = self.tail_tip
 
-    def initialize_pedestal(self, im, initialize_pedestal_blur=1.25, pedestal_n=400, canny_minval=0, canny_maxval=50,**kwargs):
+    def initialize_pedestal(self, im, initialize_pedestal_blur=1.25, canny_minval=0, canny_maxval=50,**kwargs):
         
-        ex, ey = self.eye_x_center, self.eye_y_center
-        tx, ty = self.tail_tip[0], self.tail_tip[1]
+        hx, hy = self.head
+        tx, ty = self.tail
 
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, initialize_pedestal_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
-        m = (ty - ey)/(tx - ex)
-        b = ey - m*ex
+        m = (ty - hy)/(tx - hx)
+        b = hy - m*hx
 
-        d = self.dist((ex, ey), (self.dorsal_mask_endpoints[0][0], self.dorsal_mask_endpoints[0][1]))
+        d = self.dist((hx, hy), (self.dorsal_mask_endpoints[0][0], self.dorsal_mask_endpoints[0][1]))
         
-        x, y = self.orth((ex, ey), d, m, flag="dorsal")
-        p1 = self.find_edge(edges, (x, y), (ex, ey))
+        x, y = self.orth((hx, hy), d, m, flag="dorsal")
+        p1 = self.find_edge(edges, (x, y), (hx, hy))
 
-        mp = 0.67*ex + 0.33*tx, 0.67*ey + 0.33*ty
+        mp = 0.67*hx + 0.33*tx, 0.67*hy + 0.33*ty
 
         x, y = self.orth(mp, d, m, flag="dorsal")
         p2 = self.find_edge(edges, (x, y), mp)
 
-        m2 = (p1[1] - p2[1])/(p1[0] - p2[0])
-        xx1, yy1 = self.orth(p1, d*0.25, m2)
-        xx2, yy2 = self.orth(p2, d*0.25, m2)
-
-        bsx, bsy = np.linspace(p1[0], p2[0], pedestal_n), np.linspace(p1[1], p2[1], pedestal_n)
-        xx, yy = np.linspace(xx1, xx2, pedestal_n), np.linspace(yy1, yy2, pedestal_n)
-
-        self.baseline = np.array([bsx, bsy]).T
-        self.pedestal = np.array([xx, yy]).T
+        self.pedestal_endpoint1 = p1
+        self.pedestal_endpoint2 = p2
 
     def orth(self, p, d, m, flag="center"):
 
@@ -516,40 +504,79 @@ class Clone(object):
 
     def fit_pedestal(self, im, fit_pedestal_blur=1, canny_minval=0, canny_maxval=50,**kwargs):
 
-        if self.pedestal is np.nan: self.initialize_pedestal(im)
-        
-        ps = self.pedestal
-        bs = self.baseline
-
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, fit_pedestal_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
-    
-        snakex = ps[:,0]
-        snakey = ps[:,1]
 
-        d = []
-        idx = []
+        idx = self.index_on_pixels(edges)
+
+        hx, hy = self.head
+        tx, ty = self.tail
+        cx, cy = self.animal_x_center, self.animal_y_center
+
+        anchor1 = idx[ np.argmin(np.linalg.norm(idx - self.pedestal_endpoint1, axis=1)), :]
+        anchor2 = idx[ np.argmin(np.linalg.norm(idx - self.pedestal_endpoint2, axis=1)), :]
         
-        n = len(snakex)
-        t2 = self.dist(bs[0,:], bs[-1,:])/60
+        if self.dist(anchor1, self.head) > self.dist(anchor2, self.head):
+            tmp = anchor1
+            anchor1 = anchor2
+            anchor2 = tmp
 
-        for i in xrange(1,n):
-
-            p2 = snakex[i], snakey[i]
-            p1 = bs[i,0], bs[i,1]
-            
-            if len(d) > 0:
-                lp = d[-1]
-            else:
-                lp = np.nan
-            e = self.find_edge(edges, p2, p1, lp=lp, t2=t2)
-            
-            if e is not None:
-                d.append(e)
-                idx.append(i) 
+        current = anchor1
+        target = anchor2
+        pedestal = [list(current)]
         
-        self.pedestal, self.ipedestal = d, idx
+        window=1
+
+        target_vector = np.array(target - current)
+        target_vector = self.norm_vec(target_vector)
+        
+        dorsal_vector = np.array(current - (cx, cy))
+        dorsal_vector = self.norm_vec(dorsal_vector)
+
+        nxt_vector = target_vector
+
+        w,h = edges.shape
+        while (self.dist(current, target) > 2):
+
+            idx = self.index_on_pixels(edges[ np.max([0,current[0]-window]):np.min([w,current[0]+window+1]),
+                                      np.max([0, current[1]-window]):np.min([h,current[1]+window+1])]) - (window,window)
+            idx = idx[~np.all(idx == 0, axis=1)]
+
+            try:
+                
+                nxt = current + idx[np.argmax(np.dot(idx, dorsal_vector) + np.dot(idx, target_vector) + np.dot(idx, nxt_vector))]
+
+                if (list(nxt) in pedestal) or (self.dist(nxt, target) > self.dist(current, target)):
+                    raise(ValueError)
+                else:
+
+                    target_vector = np.array(target - current)
+                    target_vector = self.norm_vec(target_vector)
+
+		    dorsal_vector = np.array(current - (cx, cy))
+		    dorsal_vector = self.norm_vec(dorsal_vector)
+
+		    nxt_vector = np.array(nxt - current)
+		    nxt_vector = self.norm_vec(nxt_vector)
+		    
+		    current = nxt
+		    pedestal.append(list(current))
+		    window=1
+            
+            except ValueError:
+                window += 1
+
+        if not (list(target) in pedestal):
+            pedestal.append(list(target))
+
+        self.pedestal = np.vstack(pedestal)
+
+    def index_on_pixels(a):
+        return np.transpose(np.vstack(np.where(a)))
     
+    def norm_vec(self, v):
+        return v/np.max(np.abs(v))
+
     def get_pedestal_max_height(self, data):
         
         self.pedestal_max_height = np.max(data[:,1])
@@ -641,7 +668,7 @@ class Clone(object):
         # deg = degree of polynomial model
 
         self.interpolate(pedestal_n)
-        p = self.interp_pedestal
+        p = self.pedestal
 
         # smooth pedestal
         window = int(analyze_pedestal_moving_avg_window)
@@ -742,39 +769,26 @@ class Clone(object):
 
         self.pedestal_area_pixels = np.abs(np.sum((y[1:] + y[:-1])*(x[1:] - x[:-1])/2))
 
-    def interpolate(self, pedestal_n):
+    def interpolate(self, pedestal_n=200, **kwargs):
 
         p = self.pedestal
         p = np.array([list(x) for x in p])
-        idx = np.array(self.ipedestal)
-        new_idx = [0]
-        new_p = [p[0,:]]
 
-        start = idx[0]
-        for i in xrange(1, start+1):
-            new_idx.append(i)
-            new_p.append(p[0,:])
+        diff = np.linalg.norm(p[:,0], p[:,1])
+        biggest_gaps = np.where(diff == np.max(diff))[0]
 
-        for i in xrange(len(idx) - 1):
-            d = idx[i+1] - idx[i]
+        while len(p) < pedestal_n:
+ 
+            i = random.choice(biggest_gaps)
 
-            if d > 1:
-                x1, y1 = p[i, :]
-                x2, y2 = p[i+1, :]
+            biggest_gaps[np.where(biggest_gaps==i)[0]+1:] += 1
+            biggest_gaps = np.delete(biggest_gaps, np.where(biggest_gaps == i))
 
-                xx, yy = np.linspace(x1, x2, d), np.linspace(y1, y2, d)
+            new_point = (p[i] + p[i+1])/2
+            p = np.vstack([p[:i+1, :], new_point, p[i+1:,:]])
 
-                [new_p.append([xx[x], yy[x]]) for x in xrange(0, len(xx))]
-                [new_idx.append(x) for x in xrange(idx[i] + 1, idx[i+1] + 1)]
-            else:
-                new_p.append(p[i+1, :])
-                new_idx.append(idx[i+1])
+            if len(biggest_gaps) == 0:
+                diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)
+                biggest_gaps = np.where(diff == np.max(diff))[0]
 
-        end = idx[-1]
-        
-        for i in xrange(end+1, int(pedestal_n)):
-            new_idx.append(i)
-            new_p.append(p[p.shape[0]-1,:])
-            
-        self.interp_pedestal = np.vstack(new_p)
-        self.interp_idx = np.array(new_idx)
+        self.pedestal = p
