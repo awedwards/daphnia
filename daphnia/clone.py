@@ -185,36 +185,52 @@ class Clone(object):
         topx1, topy1 = self.anterior_mask_endpoints[0]
         topx2, topy2 = self.anterior_mask_endpoints[1]
 
-        r = 2*self.dist((cx, cy), self.anterior)
+        maskx = []
+        masky = []
 
+        idxx, idxy = np.where(edges)
+        
+        for i in np.arange(len(idxx)):
+            if self.intersect([cx, cy, idxx[i], idxy[i]], [hx1, hy1, vx, vy]):
+                maskx.append(idxx[i])
+                masky.append(idxy[i])
+
+            if self.intersect([cx, cy, idxx[i], idxy[i]], [hx2, hy2, dx, dy]):
+                maskx.append(idxx[i])
+                masky.append(idxy[i])
+
+            if self.intersect([cx, cy, idxx[i], idxy[i]], [topx1, topy1, topx2,topy2]):
+                maskx.append(idxx[i])
+                masky.append(idxy[i])
+        
+        edges[[maskx, masky]] = 0
+        idxx, idxy = np.where(edges)
+
+        r = 2*self.dist((cx, cy), self.anterior)
         s = np.linspace(0, 2*np.pi, count_animal_pixels_n)
+        
         x = cx + int(r)*np.sin(s)
         y = cy + int(r)*np.cos(s)
-
+        
         pts = []
 
-        for i in xrange(len(s)):
+        for i in np.arange(len(s)):
             
+            p1 = (cx, cy)
+            p2 = (x[i], y[i])
 
-            p1 = (x[i], y[i])
-            p2 = (cx, cy)
+            m = (p2[1] - p1[1])/(p2[0] - p1[0])
+            b = p1[1] - m*p1[0]
 
-            if self.intersect((p1[0], p1[1], cx, cy), (hx1, hy1, vx, vy)):
-                res = self.intersection((p1[0], p1[1], cx, cy), (hx1, hy1, vx, vy))
-                p1 = (res[0], res[1])
+            diff = np.power(idxy - (m*idxx + b), 2)
+            near_line_idx = np.where(diff < np.percentile(diff, 2))
+            near_line = np.transpose(np.vstack([idxx[near_line_idx], idxy[near_line_idx]]))
 
-            if self.intersect((p1[0], p1[1], cx, cy), (hx2, hy2, dx, dy) ):
-                res = self.intersection((p1[0], p1[1], cx, cy), (hx2, hy2, dx, dy))
-                p1 = (res[0], res[1])
-
-            if self.intersect((p1[0], p1[1], cx, cy), (topx1, topy1, topx2, topy2) ):
-                res = self.intersection((p1[0], p1[1], cx, cy), (topx1, topy1, topx2, topy2))
-                p1 = (res[0], res[1])
-
-            edge_pt = self.find_edge(edges, p1, p2)
-
-            if edge_pt is not None:
-                pts.append((edge_pt[1], edge_pt[0]))
+            try:
+                j = np.argmin(np.linalg.norm(near_line-p2, axis=1))
+                pts.append((near_line[j,1], near_line[j,0]))
+            except ValueError:
+                pass
 
         cc = [[]]
         idx = 0

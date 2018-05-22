@@ -9,8 +9,6 @@ from collections import defaultdict
 from openpyxl import load_workbook 
 from ast import literal_eval
 import cv2
-from sklearn import svm
-from sklearn.externals import joblib
 import scipy
 
 def save_pkl(obj, path, name):
