@@ -1,5 +1,7 @@
 daphnia_plot_dir, /Users/edwardsa/Documents/bergland/paper/
 daphnia_plot_name, landmarks
+daphnia_plot_format, png
+daphnia_plot_resolution, 300
 
 eye_mask, 1
 eye_mask_color, yellow

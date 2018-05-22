@@ -121,4 +121,6 @@ def plot(clone, im, plot_params):
     plt.imshow(im, cmap="gray")
     plt.axis('off')
 
-    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], plot_params["daphnia_plot_name"] + ".eps" ), format='eps', dpi=300)
+    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], plot_params["daphnia_plot_name"] + "." + plot_params["daphnia_plot_format"]),
+            format=plot_params["daphnia_plot_format"],
+            dpi=int(plot_params["daphnia_plot_resolution"]))
