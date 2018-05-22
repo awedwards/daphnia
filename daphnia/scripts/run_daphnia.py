@@ -4,26 +4,31 @@ import sys, os
 from daphnia.clone import Clone
 from daphnia.daphnia_plot import plot as daphnia_plot
 from ast import literal_eval
-import utils
+import daphnia.utils as utils
+import numpy as np
 
 def analyze_clone(clone, im, params):
 
-    clone.find_eye(im, **params)
+    #try:
+        print "Detecting eye"
+        clone.find_eye(im, **params)
+        print "Masking antenna"
+        clone.mask_antenna(im, **params)
+        print "Estimating area"
+        clone.count_animal_pixels(im, **params)
+        clone.find_tail(im, **params)
+        clone.get_orientation_vectors()
+        clone.find_head(im, **params)
 
-    clone.mask_antenna(im, **params)
-    clone.count_animal_pixels(im, **params)
-    
-    clone.find_tail(im, **params)
-    clone.get_orientation_vectors()
-    clone.find_head(im, **params)
+        clone.get_animal_length()
+        print "Fitting and analyzing pedestal"
+        clone.initialize_pedestal(im, **params)
+        clone.fit_pedestal(im, **params)
+        clone.analyze_pedestal(**params)
+    #except Exception as e:
+    #    print "Error analyzing " + str(clone.filepath) + ": " + str(e)
 
-    clone.get_animal_length()
-
-    clone.initialize_pedestal(im, **params)
-    clone.fit_pedestal(im, **params)
-    clone.analyze_pedestal(**params)
-
-def write_clone(clone, cols, metadata_fields, metadata, output):
+def write_clone(clone, cols, metadata_fields, metadata, output, pedestal_output):
     
     try:
    	if os.stat(output).st_size == 0:
@@ -35,28 +40,46 @@ def write_clone(clone, cols, metadata_fields, metadata, output):
                 f.write( "\t".join(metadata_fields)+ "\t" + "\t".join(cols) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
-'''
-    #try:
-   	if os.stat(ped_output).st_size == 0:
+    
+    try:
+   	if os.stat(pedestal_output).st_size == 0:
             raise OSError
     except (OSError):
 	print "Starting new pedestal output file"
 
         try:
-	    with open(ped_output, "wb+") as f:
-	        f.write( "\t".join(["filepath","pedestal_data"]) + "\n")
+	    with open(pedestal_output, "wb+") as f:
+	        f.write( "\t".join(["filepath","i","x","y"]) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
-'''
 
     try:
         with open(output, "ab+") as f:
 
             tmpdata = []
             for mf in metadata_fields:
+                try:
+                    if mf == "animal_area_mm":
+                        val = getattr(clone,'animal_area')/np.power(metadata["pixel_to_mm"],2)
+                    elif mf == "eye_area_mm":
+                        val = getattr(clone,'eye_area')/np.power(metadata["pixel_to_mm"],2)
+                    elif mf == "animal_length_mm":
+                        val = getattr(clone,'animal_length')/metadata["pixel_to_mm"]
+                    elif mf == "tail_spine_length_mm":
+                        val = getattr(clone,'tail_spine_length')/metadata["pixel_to_mm"]
+                    elif mf == "pedestal_area_mm":
+                        val = getattr(clone,'pedestal_area')/np.power(metadata["pixel_to_mm"],2)
+                    elif mf == "pedestal_max_height_mm":
+                        val = getattr(clone,'pedestal_max_height')/metadata["pixel_to_mm"]
+                    elif mf == "deyecenter_pedestalmax_mm":
+                        val = getattr(clone,'deyecenter_pedestalmax')/metadata["pixel_to_mm"]
+                    else:
+                        val = metadata[mf]
 
-                val = metadata[metadata_fields]
-                tmpdata.append( val )
+                except KeyError:
+                    val = ''
+                
+                tmpdata.append( str(val) )
 
             for c in cols:
 
@@ -68,11 +91,13 @@ def write_clone(clone, cols, metadata_fields, metadata, output):
                     tmpdata.append("")
 
             f.write( "\t".join(tmpdata) + "\n")
-
-        with open(ped_output, "ab+") as f:
-
-            f.write('\t'.join([clone.filepath, str(clone.pedestal)]))
-    
+        try:
+        
+            with open(pedestal_output, "ab+") as f:
+                for i in np.arange(len(clone.pedestal)):
+                    f.write('\t'.join([clone.filepath, str(i), str(clone.pedestal[i,0]), str(clone.pedestal[i,1])]) + '\n')
+        except Exception as e:
+            print "Error writing pedestal to file: " + str(e)
     except (IOError, AttributeError) as e:
         print "Can't write data for " + clone.filepath + " to file: " + str(e)
 
@@ -134,65 +159,59 @@ def daphnia(params, images, plot, plot_params):
             "poly_coeff",
             "res",
             "peak",
-            "deyecenter_pedestalmax_pixels"]
+            "deyecenter_pedestalmax"]
+
+    METADATA_FIELDS = ["filebase",
+            "barcode",
+            "cloneid",
+            "pond",
+            "id",
+            "treatment",
+            "replicate",
+            "rig",
+            "datetime",
+            "inductiondate",
+            "manual_PF",
+            "manual_PF_reason",
+            "manual_PF_curator",
+            "pixel_to_mm",
+            "season",
+            "animal_area_mm",
+            "animal_length_mm",
+            "eye_area_mm",
+            "tail_spine_length_mm",
+            "deyecenter_pedestalmax_mm",
+            "pedestal_area_mm",
+            "pedestal_max_height_mm"]
 
     params_dict = myParse(params)
 
     if plot:
         plot_params_dict = myParse(plot_params)
     
-    try:
+    if params_dict['load_metadata']:
         curation_data = utils.load_manual_curation(params_dict['curation_csvpath'])
-    except KeyError:
-        curation_data = False
-
-    try:
-        male_list = utils.load_male_list(params_dict['male_listpath'])
-    except KeyError:
-        male_list = False
-
-    try:
-        inductiondates = load_induction_data(inductiondatadir)
-    except KeyError:
-        inductiondates = False
-    
-    try:
-        pond_season_md = load_pond_season_data(pondseasondir)
-    except KeyError:
-        pond_season_md = False
+        males_list = utils.load_male_list(params_dict['male_listpath'])
+        induction_dates = utils.load_induction_data(params_dict['induction_csvpath'])
+        season_data = utils.load_pond_season_data(params_dict['pond_season_csvpath'])
 
     for image_filepath in images:
         
         click.echo('Analyzing {0}'.format(image_filepath))
         
         clone = Clone(image_filepath)
-        
-        if male_list:
-            if clone.cloneid in male_list:
-                clone.manual_PF = "F"
-                clone.manual_PF_reason = "male"
-                clone.manual_PF_curator = "awe"
-
-        if curation_data:
-
-            if not (clone.manual_PF == 'F'):
-                try:
-                    row = curation_data[clone.filebase]
-                    clone.manual_PF = row['manual_PF'].upper()
-                    clone.manual_PF_reason = row['manual_PF_reason']
-                    clone.manual_PF_curator = row['manual_PF_curator'].lower()
-                except KeyError:
-                    clone.manual_PF = "P"
-                    clone.manual_PF_curator = params_dict['manual_PF_curator'] 
-        
-
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
         analyze_clone(clone, im, params_dict)
-        write_clone(clone, DATA_COLS, params_dict['output'], params_dict['ped_output'])
+        
+        if params_dict['load_metadata']:
+            try:
+                metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data)
+            except Exception:
+                print "Error gathering metadata: " + str(e)
+        write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['pedestal_output'])
 
         if plot:
             daphnia_plot(clone, im, plot_params_dict)
-            
 
 if __name__ == '__main__':
     daphnia()

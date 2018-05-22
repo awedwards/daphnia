@@ -11,6 +11,7 @@ from ast import literal_eval
 import cv2
 from sklearn import svm
 from sklearn.externals import joblib
+import scipy
 
 def save_pkl(obj, path, name):
     with open(os.path.join(path, name) + '.pkl','wb') as f:
@@ -55,16 +56,18 @@ def parse(s):
             "rig":rigId,
             "datetime":datetime}
 
-def build_metadata_dict(filepath):
+def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict):
 
-    md = parse(filepath)
+    _, filebase = os.path.split(filepath)
+    md = parse(filebase)
+    md['filebase'] = filebase
     md['treatment'] = convert_treatment(md['treatment'])
 
     # add induction
     
-    md['pond'] = pond_season_md[md['cloneid']]['pond']
-    md['id'] = pond_season_md[md['cloneid']]['id']
-    md['season'] = pond_season_md[md['cloneid']]['season']
+    md['pond'] = season_dict[md['cloneid']]['pond']
+    md['id'] = season_dict[md['cloneid']]['id']
+    md['season'] = season_dict[md['cloneid']]['season']
 
     try:
         im = cv2.imread(filepath.replace("full","fullMicro"), cv2.IMREAD_GRAYSCALE)
@@ -72,6 +75,30 @@ def build_metadata_dict(filepath):
     except Exception as e:
         print "Error extracting conversion factor from micrometer: " + str(e)
         md['pixel_to_mm'] = np.nan
+    
+    md['manual_PF'] = 'U'
+
+    if md['cloneid'] in male_list:
+        md['manual_PF'] = "F"
+        md['manual_PF_reason'] = "male"
+        md['manual_PF_curator'] = "awe"
+
+    if not (md['manual_PF'] == 'F'):
+        try:
+            row = curation_dict[md['filebase']]
+            md['manual_PF'] = row['manual_PF'].upper()
+            md['manual_PF_reason'] = row['manual_PF_reason']
+            md['manual_PF_curator'] = row['manual_PF_curator'].lower()
+        except KeyError:
+            md['manual_PF'] = "P"
+            md['manual_PF_curator'] = "awe"
+
+    try:
+        md['inductiondate'] = induction_dict[md['barcode']]
+    except KeyError:
+        pass
+
+    return md
 
 def convert_treatment(treatment):
         
@@ -230,7 +257,8 @@ def csv_to_df(csvfile):
         return pd.read_csv(csvfile, sep="\t")
     except Exception as e:
         print "Could not load csv because: " + str(e)
-        return
+    
+    return
 
 def df_to_clonelist(df, datadir = None):
 
@@ -320,6 +348,7 @@ def load_manual_curation(csvpath):
         curation_data[row['filebase'][5:] + ".bmp"] = row
     
     return curation_data
+
 def write_clone(clone, cols, path, outfile):
 
     try:        
@@ -340,8 +369,6 @@ def write_clone(clone, cols, path, outfile):
 
     except (IOError, AttributeError) as e:
         print "Can't write clone data to file: " + str(e)
-
-   return
 
 def crop(img):
         
@@ -458,7 +485,7 @@ def crop(img):
 	    elif all(["left" in x[0] for x in corners]):
 		threshold = max([x[1] for x in corners])
 		return img[:,threshold:]
-	else: return crop(img[:,leftbound:rightbound])
+        else: return crop(img[:,leftbound:rightbound])
 
 def calc_pixel_to_mm(im):
 
@@ -472,13 +499,11 @@ def calc_pixel_to_mm(im):
     cl1 = clahe.apply(cropped)
     highcontrast = cl1.copy()
 
-
     edge_threshold = 175
     sum_edges = w*h
-    lines = np.nan
+    lines = None
 
     while (edge_threshold > 0 and not np.any(lines)):
-
 	edges = cv2.Canny(highcontrast,0,edge_threshold,apertureSize = 3)
 	sum_edges = np.sum(edges)
 	edge_threshold -= 25
@@ -488,7 +513,7 @@ def calc_pixel_to_mm(im):
 	    lines = cv2.HoughLines(edges,1,np.pi/180,200,min_line_length)    
 	    min_line_length -= 50
     
-    if lines is np.nan:
+    if lines is None:
 	print "Could not detect ruler"
 	return
 

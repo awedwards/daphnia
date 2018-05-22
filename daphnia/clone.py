@@ -165,7 +165,7 @@ class Clone(object):
         self.eye_pts = np.array(eye)
         try:
             self.eye_x_center, self.eye_y_center = np.mean(np.array(eye), axis=0)
-            self.total_eye_pixels = count
+            self.eye_area = count
         except (TypeError, IndexError):
             self.find_eye(im, find_eye_blur=find_eye_blur+0.25)
     
@@ -213,7 +213,7 @@ class Clone(object):
 
             edge_pt = self.find_edge(edges, p1, p2)
 
-            if edge_pt is not np.nan:
+            if edge_pt is not None:
                 pts.append((edge_pt[1], edge_pt[0]))
 
         cc = [[]]
@@ -234,7 +234,6 @@ class Clone(object):
                 try:
                     if len(cc[idx]) < 4:
                         cc.pop(idx)
-                        idx -= 1
                     elif connected:
                         idx += 1
                         connected = False
@@ -243,11 +242,11 @@ class Clone(object):
         
         pts = np.vstack(cc) 
         self.whole_animal_points = pts
-        self.total_animal_pixels = self.area(pts[:,0], pts[:,1])
+        self.animal_area = self.area(pts[:,0], pts[:,1])
 
     def get_animal_length(self):
 
-        self.animal_length_pixels = self.dist(self.head, self.tail)
+        self.animal_length = self.dist(self.head, self.tail)
 
     def mask_antenna(self, im, mask_antenna_blur=1.5,
             mask_antenna_cnx_comp_threshold=125,
@@ -450,8 +449,10 @@ class Clone(object):
         if self.tail == None:
             self.tail = self.tail_tip
             self.tail_base = self.tail_tip
+        
+        self.tail_spine_length = self.dist(self.tail_base, self.tail_tip)
 
-    def initialize_pedestal(self, im, initialize_pedestal_blur=1.25, canny_minval=0, canny_maxval=50,**kwargs):
+    def initialize_pedestal(self, im, initialize_pedestal_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
         
         hx, hy = self.head
         tx, ty = self.tail
@@ -498,7 +499,9 @@ class Clone(object):
 
     def fit_pedestal(self, im, fit_pedestal_blur=1, canny_minval=0, canny_maxval=50,**kwargs):
 
-        hc = self.high_contrast(im)
+        #hc = self.high_contrast(im)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
+        hc = clahe.apply(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, fit_pedestal_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
         idx = self.index_on_pixels(edges)
@@ -530,7 +533,7 @@ class Clone(object):
         nxt_vector = target_vector
 
         w,h = edges.shape
-        while (self.dist(current, target) > 2):
+        while (self.dist(current, target) > 2) and (window < 10):
 
             idx = self.index_on_pixels(edges[ np.max([0,current[0]-window]):np.min([w,current[0]+window+1]),
                                       np.max([0, current[1]-window]):np.min([h,current[1]+window+1])]) - (window,window)
@@ -565,7 +568,7 @@ class Clone(object):
 
         self.pedestal = np.vstack(pedestal)
 
-    def index_on_pixels(a):
+    def index_on_pixels(self,a):
         return np.transpose(np.vstack(np.where(a)))
     
     def norm_vec(self, v):
@@ -660,10 +663,9 @@ class Clone(object):
         # ma = window for moving average
         # w_p = lower percentile for calculating polynomial model
         # deg = degree of polynomial model
-
-        self.interpolate(pedestal_n)
+        self.interpolate()
         p = self.pedestal
-
+ 
         # smooth pedestal
         window = int(analyze_pedestal_moving_avg_window)
         s = pd.rolling_mean(p, window)
@@ -675,19 +677,8 @@ class Clone(object):
         m = (p2[1] - p1[1])/(p2[0] - p1[0])
         b = p1[1] - m*p1[0]
         h = np.abs(-m*s[:,0] + s[:,1] - b)/np.sqrt(m**2 + 1)
+        
         ipeak = np.argmax(h)
-        threshold = np.percentile(h, analyze_pedestal_percentile)
-
-        for j in xrange(ipeak, len(h)):
-            if h[j] <= threshold:
-                qub = j
-                break
-
-        for j in xrange(ipeak, 0, -1):
-            if h[j] <= threshold:
-                qlb = j
-                break
-
         self.peak = p[ipeak]
         
         m1 = ((s[ipeak-1,1]-s[ipeak+1,1])/(s[ipeak-1,0]-s[ipeak+1,0]))
@@ -702,35 +693,21 @@ class Clone(object):
         qx -= np.min(qx)
         qy -= np.min(qy)
 
-        X = np.transpose(np.vstack([np.concatenate([qx[:qlb], qx[qub:]]), np.concatenate([qy[:qlb], qy[qub:]])]))
+        threshold = np.percentile(qy, analyze_pedestal_percentile)
+        poly_train = np.where(qy<threshold)
+        roi = np.where(qy >= threshold)
 
+        X = np.transpose(np.vstack([ qx[poly_train], qy[poly_train] ]))
         self.poly_coeff, res, _, _, _ = np.polyfit(X[:,0], X[:,1], analyze_pedestal_polyfit_degree, full=True)
         self.res = res[0]
+
         poly = np.poly1d(self.poly_coeff)
         
         yy = poly(qx)
         diff = qy - yy
-        diff[np.where(diff<0)] = 0
-        
-        lb, ub = 0, 0
-
-        for j in xrange(ipeak, len(diff)):
-            if diff[j] == 0:
-                ub = j
-                break
-        for j in xrange(ipeak, 0, -1):
-            if diff[j] == 0:
-                lb = j
-                break
           
-        self.calc_pedestal_area(qx[lb:ub], diff[lb:ub])
-        
-        try:
-            self.pedestal_max_height_pixels = np.max(diff[lb:ub])
-        except ValueError:
-            # if there is no section of pedestal that is higher than predictive model, set max height to 0
-            self.pedestal_max_height_pixels = 0.0
-
+        self.calc_pedestal_area(qx[roi], diff[roi])
+        self.pedestal_max_height = np.max(diff[roi])
         self.get_deye_pedestalmax()
 
     def rotate(self, origin, points, phi):
@@ -745,7 +722,7 @@ class Clone(object):
 
     def get_deye_pedestalmax(self):
 
-        self.deyecenter_pedestalmax_pixels = self.dist((self.eye_x_center, self.eye_y_center), self.peak)
+        self.deyecenter_pedestalmax = self.dist((self.eye_x_center, self.eye_y_center), self.peak)
 
     def flip(self, p, ip):
         
@@ -761,21 +738,17 @@ class Clone(object):
         
         # calculates the area of pedestal
 
-        self.pedestal_area_pixels = np.abs(np.sum((y[1:] + y[:-1])*(x[1:] - x[:-1])/2))
+        self.pedestal_area = np.abs(np.sum((y[1:] + y[:-1])*(x[1:] - x[:-1])/2))
 
     def interpolate(self, pedestal_n=200, **kwargs):
 
         p = self.pedestal
-        p = np.array([list(x) for x in p])
-
-        diff = np.linalg.norm(p[:,0], p[:,1])
+        diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)
         biggest_gaps = np.where(diff == np.max(diff))[0]
-
-        while len(p) < pedestal_n:
+        while p.shape[0] < pedestal_n:
  
             i = random.choice(biggest_gaps)
-
-            biggest_gaps[np.where(biggest_gaps==i)[0]+1:] += 1
+            biggest_gaps[np.where(biggest_gaps==i)[0][0]+1:] += 1
             biggest_gaps = np.delete(biggest_gaps, np.where(biggest_gaps == i))
 
             new_point = (p[i] + p[i+1])/2
