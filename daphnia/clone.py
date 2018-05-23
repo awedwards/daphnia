@@ -65,6 +65,7 @@ class Clone(object):
         self.tail = np.nan
         self.tail_base = np.nan
         self.tail_tip = np.nan
+        self.tail_spine_length = np.nan
         self.dorsal_point = np.nan
 
         self.peak = np.nan
@@ -482,13 +483,12 @@ class Clone(object):
         d = self.dist((hx, hy), (self.dorsal_mask_endpoints[0][0], self.dorsal_mask_endpoints[0][1]))
         
         x, y = self.orth((hx, hy), d, m, flag="dorsal")
-        p1 = self.find_edge(edges, (x, y), (hx, hy))
-
+        p1 = self.find_edge2(edges, (hx, hy), (x, y))
         mp = 0.67*hx + 0.33*tx, 0.67*hy + 0.33*ty
 
         x, y = self.orth(mp, d, m, flag="dorsal")
-        p2 = self.find_edge(edges, (x, y), mp)
-
+        p2 = self.find_edge2(edges,mp,(x, y))
+        
         self.pedestal_endpoint1 = p1
         self.pedestal_endpoint2 = p2
 
@@ -583,7 +583,7 @@ class Clone(object):
             pedestal.append(list(target))
 
         self.pedestal = np.vstack(pedestal)
-
+    
     def index_on_pixels(self,a):
         return np.transpose(np.vstack(np.where(a)))
     
@@ -617,6 +617,23 @@ class Clone(object):
                     return (yy[i], xx[i])
                 else:
                     continue
+
+    def find_edge2(self, edges, p1, p2):
+
+        idxx, idxy = np.where(edges)
+        
+        m = (p2[1] - p1[1])/(p2[0] - p1[0])
+        b = p1[1] - m*p1[0]
+
+        diff = np.power(idxy - (m*idxx + b), 2)
+        near_line_idx = np.where(diff < np.percentile(diff, 2))
+        near_line = np.transpose(np.vstack([idxx[near_line_idx], idxy[near_line_idx]]))
+
+        try:
+            j = np.argmin(np.linalg.norm(near_line-p2, axis=1))
+            return near_line[j,:]
+        except ValueError:
+            return
 
     def high_contrast(self, im):
         
