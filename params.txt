@@ -9,11 +9,11 @@ fit_ellipse_chi2,3
 find_eye_blur, 0.5
 canny_minval, 0
 canny_maxval, 50
-count_animal_pixels_blur, 1.5
+count_animal_pixels_blur, 1.0
 count_animal_pixels_n, 100
 count_animal_pixels_cc_threshold, 15
 mask_antenna_blur, 1.5
-mask_antenna_cnx_comp_threshold, 125
+mask_antenna_cnx_comp_threshold, 150
 mask_antenna_coronal_tilt, 0.7
 mask_antenna_anterior_tilt, 20
 mask_antenna_posterior_tilt, 2

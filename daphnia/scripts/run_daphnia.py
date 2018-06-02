@@ -18,6 +18,7 @@ def analyze_clone(clone, im, params):
         clone.count_animal_pixels(im, **params)
         clone.find_tail(im, **params)
         clone.get_orientation_vectors()
+        clone.eye_vertices()
         clone.find_head(im, **params)
 
         clone.get_animal_length()
@@ -211,6 +212,7 @@ def daphnia(params, images, plot, plot_params):
         write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['pedestal_output'])
 
         if plot:
+            clone.filebase = metadata['filebase']
             daphnia_plot(clone, im, plot_params_dict)
 
 if __name__ == '__main__':

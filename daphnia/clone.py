@@ -63,6 +63,7 @@ class Clone(object):
         self.eye_dorsal = np.nan
         self.head = np.nan
         self.tail = np.nan
+        self.tail_dorsal = np.nan
         self.tail_base = np.nan
         self.tail_tip = np.nan
         self.tail_spine_length = np.nan
@@ -271,7 +272,7 @@ class Clone(object):
             mask_antenna_anterior_tilt=20,
             mask_antenna_posterior_tilt=2,
             canny_minval=0,
-            canny_maxval=1, **kwargs):
+            canny_maxval=50, **kwargs):
 
         ex, ey = self.eye_x_center, self.eye_y_center
 
@@ -392,17 +393,28 @@ class Clone(object):
         self.ven_vec = [self.animal_x_center - self.ventral[0], self.animal_y_center - self.ventral[1]]
         self.ant_vec = [self.animal_x_center - self.anterior[0], self.animal_y_center - self.anterior[1]]
        
+    def eye_vertices(self):
+        
+        # finds and assigns eye pixel as ventral- and dorsal-most eye pixel
+
+        ep = self.eye_pts
+        ex, ey = self.eye_x_center, self.eye_y_center
+        dx, dy = self.dor_vec
+        vx, vy = self.ven_vec
+        
+        dorsal_target_x, dorsal_target_y = ex - dx, ey - dy
+        ventral_target_x, ventral_target_y = ex - vx, ey - vy
+        
+        # calculate minimum distance between dorsal/ventral vectors originating at the eye center and all of the eye pixels
+
+        self.eye_dorsal = ep[np.argmin(np.linalg.norm(ep - (dorsal_target_x, dorsal_target_y), axis=1)), :]
+        self.eye_ventral = ep[np.argmin(np.linalg.norm(ep - (ventral_target_x, ventral_target_y), axis=1)), :]
+
     def find_head(self, im, find_head_blur=1.0, canny_minval=0, canny_maxval=50, **kwargs):
 
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, find_head_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
-        ep = self.eye_pts
-        ex, ey = self.eye_x_center, self.eye_y_center
-        dx, dy = self.dor_vec
-        target_x, target_y = ex - dx, ey - dy
-
-        self.eye_dorsal = ep[np.argmin(np.linalg.norm(ep - (target_x, target_y), axis=1)), :]
         edx, edy = self.eye_dorsal
 
         tx, ty = self.tail
@@ -438,7 +450,7 @@ class Clone(object):
         edges = cv2.Canny(np.array(255*gaussian(hc, find_tail_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
         tx, ty = self.tail_tip
-        ex, ey = 0.5*tx + 0.5*self.eye_x_center, 0.5*ty + 0.5*self.eye_y_center
+        ex, ey = 0.5*tx + 0.5*self.eye_ventral[0], 0.5*ty + 0.5*self.eye_ventral[1]
         
         m = (ty - ey)/(tx - ex)
         
@@ -447,6 +459,7 @@ class Clone(object):
         d = self.dist((tx, ty), (ex, ey))/8
 
         for i in xrange(int(find_tail_n)):
+            
             p1, p2 = self.orth((x[i], y[i]), d, m, "both")
 
             if self.dist(self.ventral, p1) < self.dist(self.ventral, p2):
@@ -456,14 +469,18 @@ class Clone(object):
                 start = p2
                 end = p1
 
-            e = self.find_edge(edges, start, end)
+            e = self.find_edge2(edges, end, start)
+            
+            if e is not None:
+                if self.dist(e, start) < self.dist(p1, p2)/45:
+                    self.tail = e
+                    self.tail_dorsal = clone.find_edge2(edges, start, end)
+                    break
 
-            if self.dist(e, start) < self.dist(p1, p2)/45:
-                self.tail = e
-                self.tail_base = (x[i],y[i])
-                break
+        if self.tail_dorsal is None:
+            self.tail_dorsal = np.nan
 
-        if self.tail == None:
+        if self.tail is None:
             self.tail = self.tail_tip
             self.tail_base = self.tail_tip
         
