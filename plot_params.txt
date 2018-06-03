@@ -12,19 +12,20 @@ antenna_mask, 0
 antenna_mask_color, blue
 antenna_mask_linewidth, 3
 
-landmarks, 0
+landmarks, 1
 landmark_head, 1
 landmark_tail, 1
+landmark_tail_base,1
 landmark_tail_tip, 1
 landmark_animal_center, 1
 landmark_eye_center, 1
 landmark_eye_dorsal, 1
-landmark_color, red
+landmark_color, blue
 # point, pixel, circle, octagon, square, pentagon, star, plus, diamond
 landmark_style, pixel
 landmark_size, 5
 
-animal_length_plot, 1
+animal_length_plot, 0
 animal_length_plot_color, black
 animal_length_linewidth, 5
 
@@ -32,15 +33,15 @@ tail_spine_length_plot, 1
 tail_spine_length_plot_color, black
 tail_spine_length_linewidth, 5
 
-animal_perimeter, 1
+animal_perimeter, 0
 # line vs points
 animal_perimeter_style, line
 animal_perimeter_color, green
 animal_perimeter_linewidth, 5
 
-pedestal_plot, 0
-pedestal_plot_color, red
-pedestal_plot_alpha, 1
-pedestal_plot_marker_size, 2
-pedestal_plot_window_highlight, 1
-pedestal_plot_window_highlight_color, red
+dorsal_edge_plot, 1
+dorsal_edge_plot_color, red
+dorsal_edge_plot_alpha, 1
+dorsal_edge_plot_marker_size, 2
+dorsal_edge_plot_window_highlight, 1
+dorsal_edge_plot_window_highlight_color, red

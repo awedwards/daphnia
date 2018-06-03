@@ -37,6 +37,7 @@ def plot_antenna_mask(clone, im, antenna_mask=0, antenna_mask_color="blue", ante
 def plot_landmarks(clone, landmarks=1,
         landmark_head=1,
         landmark_tail=1,
+        landmark_tail_base=1,
         landmark_tail_tip=1,
         landmark_animal_center=1,
         landmark_eye_center=1,
@@ -55,6 +56,9 @@ def plot_landmarks(clone, landmarks=1,
 
         if landmark_tail: 
             plt.scatter(clone.tail[1], clone.tail[0], c=landmark_color, marker=style, s=landmark_size)
+         
+        if landmark_tail_base:
+            plt.scatter(clone.tail_base[1], clone.tail_base[0], c=landmark_color, marker=style, s=landmark_size)
 
         if landmark_tail_tip:
             plt.scatter(clone.tail_tip[1], clone.tail_tip[0], c=landmark_color, marker=style, s=landmark_size)
@@ -94,17 +98,17 @@ def plot_animal_perimeter(clone, animal_perimeter=1, animal_perimeter_style="lin
             
             plt.scatter(pts[:,0], pts[:,1], c=animal_perimeter_color)
 
-def plot_pedestal(clone, pedestal_plot=1,
-    pedestal_plot_color="blue",
-    pedestal_plot_alpha=1.0,
-    pedestal_plot_marker_size=2,
-    pedestal_plot_window_highlight=0,
-    pedestal_plot_window_highlight_color="red", **kwargs):
+def plot_dorsal_edge(clone, dorsal_edge_plot=1,
+    dorsal_edge_plot_color="blue",
+    dorsal_edge_plot_alpha=1.0,
+    dorsal_edge_plot_marker_size=2,
+    dorsal_edge_plot_window_highlight=0,
+    dorsal_edge_plot_window_highlight_color="red", **kwargs):
 
-    if pedestal_plot:
-        p = clone.pedestal
-        p = np.array([list(x) for x in p])
-        plt.scatter(p[:,1], p[:,0], c=pedestal_plot_color, s=pedestal_plot_marker_size, alpha=pedestal_plot_alpha)
+    if dorsal_edge_plot:
+        p = clone.dorsal_edge
+        #p = np.array([list(x) for x in p])
+        plt.scatter(p[:,1], p[:,0], c=dorsal_edge_plot_color, s=dorsal_edge_plot_marker_size, alpha=dorsal_edge_plot_alpha)
 
 def plot(clone, im, plot_params):
 
@@ -116,11 +120,11 @@ def plot(clone, im, plot_params):
     plot_animal_length(clone, **plot_params)
     plot_tail_spine_length(clone, **plot_params)
     plot_animal_perimeter(clone, **plot_params)
-    plot_pedestal(clone, **plot_params)
+    plot_dorsal_edge(clone, **plot_params)
     
     plt.imshow(im, cmap="gray")
     plt.axis('off')
 
-    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], plot_params["daphnia_plot_name"] + "." + plot_params["daphnia_plot_format"]),
+    plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], "_".join([plot_params["daphnia_plot_name"],clone.filebase[:-4]]) + "." + plot_params["daphnia_plot_format"]),
             format=plot_params["daphnia_plot_format"],
             dpi=int(plot_params["daphnia_plot_resolution"]))

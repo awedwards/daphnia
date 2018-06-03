@@ -13,19 +13,19 @@ def analyze_clone(clone, im, params):
         print "Detecting eye"
         clone.find_eye(im, **params)
         print "Masking antenna"
-        clone.mask_antenna(im, **params)
+        clone.find_features(im, **params)
         print "Estimating area"
-        clone.count_animal_pixels(im, **params)
-        clone.find_tail(im, **params)
+        #clone.count_animal_pixels(im, **params)
         clone.get_orientation_vectors()
         clone.eye_vertices()
+        
+        clone.find_tail(im, **params)
         clone.find_head(im, **params)
 
         clone.get_animal_length()
         print "Fitting and analyzing pedestal"
-        clone.initialize_pedestal(im, **params)
-        clone.fit_pedestal(im, **params)
-        clone.analyze_pedestal(**params)
+        clone.get_dorsal_edge(im,**params)
+        print clone.dorsal_edge
     #except Exception as e:
     #    print "Error analyzing " + str(clone.filepath) + ": " + str(e)
 

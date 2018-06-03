@@ -61,6 +61,7 @@ class Clone(object):
         # these are actual points on the animal
 
         self.eye_dorsal = np.nan
+        self.eye_ventral = np.nan
         self.head = np.nan
         self.tail = np.nan
         self.tail_dorsal = np.nan
@@ -187,11 +188,13 @@ class Clone(object):
         topx1, topy1 = self.anterior_mask_endpoints[0]
         topx2, topy2 = self.anterior_mask_endpoints[1]
 
+        
         maskx = []
         masky = []
 
         idxx, idxy = np.where(edges)
         
+
         for i in np.arange(len(idxx)):
             if self.intersect([cx, cy, idxx[i], idxy[i]], [hx1, hy1, vx, vy]):
                 maskx.append(idxx[i])
@@ -266,8 +269,8 @@ class Clone(object):
 
         self.animal_length = self.dist(self.head, self.tail)
 
-    def mask_antenna(self, im, mask_antenna_blur=1.5,
-            mask_antenna_cnx_comp_threshold=125,
+    def find_features(self, im, mask_antenna_blur=1.5,
+            mask_antenna_cnx_comp_threshold=150,
             mask_antenna_coronal_tilt = 0.7,
             mask_antenna_anterior_tilt=20,
             mask_antenna_posterior_tilt=2,
@@ -309,32 +312,7 @@ class Clone(object):
         bot1 = tail[0] + mask_antenna_posterior_tilt*(self.tail_tip[1] - tail[1]), tail[1] + mask_antenna_posterior_tilt*(self.tail_tip[0] - tail[0])
         bot2 = tail[0] - mask_antenna_posterior_tilt*(self.tail_tip[1] - tail[1]), tail[1] - mask_antenna_posterior_tilt*(self.tail_tip[0] - tail[0])
        
-        edges_x = np.where(edge_image)[0]
-        edges_y = np.where(edge_image)[1]
-
-        #TO DO: Vectorize
-        mask_x1 = []
-        mask_y1 = []
-        mask_x2 = []
-        mask_y2 = []
-        top_mask_x = []
-        top_mask_y = []
-
-        for i in xrange(len(edges_x)):
-            if self.intersect([cx, cy, edges_x[i], edges_y[i]], [hx1, hy1, vd1[0], vd1[1]]):
-                mask_x1.append(edges_x[i])
-                mask_y1.append(edges_y[i])
-            if self.intersect([cx, cy, edges_x[i], edges_y[i]], [hx1, hy1, vd2[0], vd2[1]]):
-                mask_x2.append(edges_x[i])
-                mask_y2.append(edges_y[i])
-            if self.intersect([cx, cy, edges_x[i], edges_y[i]], [top1[0], top1[1], top2[0], top2[1]]):
-                top_mask_x.append(edges_x[i])
-                top_mask_y.append(edges_y[i])
-
-        edge_copy[[mask_x1, mask_y1]] = 0
-        edge_copy[[mask_x2, mask_y2]] = 0
-        edge_copy[[top_mask_x, top_mask_y]] = 0
-
+        edge_copy = self.mask_antenna(edge_copy, (cx, cy), a=[hx1, hy1, vd1[0], vd1[1]], b=[hx1, hy1, vd2[0], vd2[1]], c=[top1[0], top1[1], top2[0], top2[1]])
         self.get_anatomical_directions(edge_copy)
 
         if self.dist( self.ventral, vd1 ) < self.dist( self.ventral, vd2 ):
@@ -353,13 +331,33 @@ class Clone(object):
 
         shift = np.array( (x2 - cx, y2 - cy) )
 
-        self.dorsal_mask_endpoints = ((hx - 1.4*shift[0], hy - 1.4*shift[1]), self.tail_tip)
-        self.ventral_mask_endpoints = ((self.ventral_mask_endpoints[0][0] + 0.05*shift[0],
-            self.ventral_mask_endpoints[0][1] + 0.05*shift[1]),
-            (self.ventral_mask_endpoints[1][0] + 0.05*shift[0],
-                self.ventral_mask_endpoints[1][1] + 0.05*shift[1]))
-        self.anterior_mask_endpoints = (top1, top2)
+        self.dorsal_mask_endpoints = [hx - 1.4*shift[0], hy - 1.4*shift[1], self.tail_tip[0], self.tail_tip[1]]
+        self.ventral_mask_endpoints = [self.ventral_mask_endpoints[0][0] + 0.05*shift[0],
+            self.ventral_mask_endpoints[0][1] + 0.05*shift[1],
+            self.ventral_mask_endpoints[1][0] + 0.05*shift[0],
+            self.ventral_mask_endpoints[1][1] + 0.05*shift[1]]
+        self.anterior_mask_endpoints = [top1[0], top1[1], top2[0], top2[1]]
         self.edge_copy = edge_copy
+    
+    def mask_antenna(self, edge, center, **kwargs):
+        
+        cx, cy = center
+
+        edges_x = np.where(edge)[0]
+        edges_y = np.where(edge)[1]
+ 
+        #TO DO: Vectorize
+        mask_x = []
+        mask_y = []
+     
+        for i in xrange(len(edges_x)):
+            for key, value in kwargs.iteritems():
+                if self.intersect([cx, cy, edges_x[i], edges_y[i]], [value[0], value[1], value[2], value[3]]):
+                    mask_x.append(edges_x[i])
+                    mask_y.append(edges_y[i])
+        
+        edge[[mask_x, mask_y]] = 0
+        return edge
 
     def get_anatomical_directions(self, im, fit_ellipse_chi2=3, flag="animal", **kwargs):
 
@@ -425,7 +423,7 @@ class Clone(object):
         cx = edx - (-0.15*d*(edx - tx))/d
         cy = edy - (-0.15*d*(edy - ty))/d
 
-        (topx1, topy1), (topx2, topy2) = self.anterior_mask_endpoints
+        [topx1, topy1, topx2, topy2] = self.anterior_mask_endpoints
 
         if self.intersect((edx, edy, cx, cy), (topx1, topy1, topx2, topy2)):
             res = self.intersection((edx, edy, cx, cy), (topx1, topy1, topx2, topy2))
@@ -436,7 +434,7 @@ class Clone(object):
             p2 = edx, edy
         
         try:
-            hx, hy = self.find_edge(edges, p1, p2)
+            hx, hy = self.find_edge2(edges, p2, p1)
             self.head = hx, hy
         
         except TypeError:
@@ -450,7 +448,8 @@ class Clone(object):
         edges = cv2.Canny(np.array(255*gaussian(hc, find_tail_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
         tx, ty = self.tail_tip
-        ex, ey = 0.5*tx + 0.5*self.eye_ventral[0], 0.5*ty + 0.5*self.eye_ventral[1]
+        target = 3*self.eye_ventral[0] - 2*self.eye_x_center, 3*self.eye_ventral[1] - 2*self.eye_y_center
+        ex, ey = 0.5*tx + 0.5*target[0], 0.5*ty + 0.5*target[1]
         
         m = (ty - ey)/(tx - ex)
         
@@ -472,9 +471,10 @@ class Clone(object):
             e = self.find_edge2(edges, end, start)
             
             if e is not None:
-                if self.dist(e, start) < self.dist(p1, p2)/45:
+                if self.dist(e, start) < self.dist(p1, p2)/5:
                     self.tail = e
-                    self.tail_dorsal = clone.find_edge2(edges, start, end)
+                    self.tail_dorsal = self.find_edge2(edges, start, end)
+                    self.tail_base = (self.tail[0] + self.tail_dorsal[0])/2, (self.tail[1] + self.tail_dorsal[1])/2
                     break
 
         if self.tail_dorsal is None:
@@ -482,32 +482,72 @@ class Clone(object):
 
         if self.tail is None:
             self.tail = self.tail_tip
-            self.tail_base = self.tail_tip
         
         self.tail_spine_length = self.dist(self.tail_base, self.tail_tip)
 
-    def initialize_pedestal(self, im, initialize_pedestal_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
+    def get_dorsal_edge(self, im, dorsal_edge_blur=0.8, canny_minval=0, canny_maxval=50,**kwargs):
         
         hx, hy = self.head
-        tx, ty = self.tail
+        tx_d, ty_d = self.tail_dorsal
+        cx, cy = self.animal_x_center, self.animal_y_center
 
         hc = self.high_contrast(im)
-        edges = cv2.Canny(np.array(255*gaussian(hc, initialize_pedestal_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
+        edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
 
-        m = (ty - hy)/(tx - hx)
-        b = hy - m*hx
+        edges = self.mask_antenna(edges, (cx, cy),
+                dorsal=self.dorsal_mask_endpoints,
+                ventral=self.ventral_mask_endpoints,
+                anterior=self.anterior_mask_endpoints)
 
-        d = self.dist((hx, hy), (self.dorsal_mask_endpoints[0][0], self.dorsal_mask_endpoints[0][1]))
+        m,b = self.line_fit(self.head, self.tail_dorsal)
+
+        d = self.dist((hx,hy), (self.dorsal_mask_endpoints[0], self.dorsal_mask_endpoints[1]))
+
+        checkpoints = {}
+
+        for i in np.arange(0,1,0.1):
+            mp = (1-i)*hx + i*tx_d, (1-i)*hy + i*ty_d
+            x,y = self.orth(mp, d, m, flag="dorsal")
+            p2 = self.find_edge2(edges, mp, (x,y))
+            checkpoints[int(i*10)] = p2
         
-        x, y = self.orth((hx, hy), d, m, flag="dorsal")
-        p1 = self.find_edge2(edges, (hx, hy), (x, y))
-        mp = 0.67*hx + 0.33*tx, 0.67*hy + 0.33*ty
+        m,b = self.line_fit(checkpoints[4], self.tail_dorsal)
 
-        x, y = self.orth(mp, d, m, flag="dorsal")
-        p2 = self.find_edge2(edges,mp,(x, y))
+        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(self.head), np.array(checkpoints[0]), flag="head")
+
+        for k in np.arange(9):
+            try:
+                x,y = checkpoints[k]
+                x_1, y_1 = checkpoints[k+1]
+                err = np.abs(b + m*x -y)/np.sqrt(1 + m**2)
+                err_plus_one = np.abs(b + m*x_1 - y_1)/np.sqrt(1 + m**2)
+
+                if (k>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
+                    raise TypeError
+                else:
+                    dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[k], checkpoints[k+1])])
+            except TypeError:
+                continue
+
+        try:
+            x,y = checkpoints[9]
+            err = np.abs(b + m*x - y)/np.sqrt(1+m**2)
+            
+            if err < self.dist(self.head, self.tail)/16:
+                dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[9], self.tail_dorsal)])
+            else:
+                raise TypeError
+        except TypeError:
+                dorsal_edge = np.vstack([dorsal_edge, self.tail_dorsal])
+        self.dorsal_edge = self.interpolate(dorsal_edge)
         
-        self.pedestal_endpoint1 = p1
-        self.pedestal_endpoint2 = p2
+
+    def line_fit(self,p1,p2):
+        
+        # returns slope and y-intercept of line between two points
+
+        m = (p2[1]-p1[1])/(p2[0]-p1[0])
+        return m, p2[1] - m*p2[0]
 
     def orth(self, p, d, m, flag="center"):
 
@@ -530,33 +570,14 @@ class Clone(object):
         else:
             return x1, y1
 
-    def fit_pedestal(self, im, fit_pedestal_blur=1, canny_minval=0, canny_maxval=50,**kwargs):
-
-        #hc = self.high_contrast(im)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(2,2))
-        hc = clahe.apply(im)
-        edges = cv2.Canny(np.array(255*gaussian(hc, fit_pedestal_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
+    def traverse_dorsal_edge(self, edges, current,target,flag="dorsal",**kwargs):
 
         idx = self.index_on_pixels(edges)
 
-        hx, hy = self.head
-        tx, ty = self.tail
         cx, cy = self.animal_x_center, self.animal_y_center
 
-        anchor1 = idx[ np.argmin(np.linalg.norm(idx - self.pedestal_endpoint1, axis=1)), :]
-        anchor2 = idx[ np.argmin(np.linalg.norm(idx - self.pedestal_endpoint2, axis=1)), :]
+        dorsal_edge = [list(current)]
         
-        if self.dist(anchor1, self.head) > self.dist(anchor2, self.head):
-            tmp = anchor1
-            anchor1 = anchor2
-            anchor2 = tmp
-
-        current = anchor1
-        target = anchor2
-        pedestal = [list(current)]
-        
-        window=1
-
         target_vector = np.array(target - current)
         target_vector = self.norm_vec(target_vector)
         
@@ -565,7 +586,9 @@ class Clone(object):
 
         nxt_vector = target_vector
 
+        window=1
         w,h = edges.shape
+
         while (self.dist(current, target) > 2) and (window < 10):
 
             idx = self.index_on_pixels(edges[ np.max([0,current[0]-window]):np.min([w,current[0]+window+1]),
@@ -576,7 +599,7 @@ class Clone(object):
                 
                 nxt = current + idx[np.argmax(np.dot(idx, dorsal_vector) + np.dot(idx, target_vector) + np.dot(idx, nxt_vector))]
 
-                if (list(nxt) in pedestal) or (self.dist(nxt, target) > self.dist(current, target)):
+                if (list(nxt) in dorsal_edge) or (self.dist(nxt, target) > self.dist(current, target)):
                     raise(ValueError)
                 else:
 
@@ -590,16 +613,16 @@ class Clone(object):
 		    nxt_vector = self.norm_vec(nxt_vector)
 		    
 		    current = nxt
-		    pedestal.append(list(current))
+		    dorsal_edge.append(list(current))
 		    window=1
             
             except ValueError:
                 window += 1
 
-        if not (list(target) in pedestal):
-            pedestal.append(list(target))
+        if not (list(target) in dorsal_edge):
+            dorsal_edge.append(list(target))
 
-        self.pedestal = np.vstack(pedestal)
+        return dorsal_edge
     
     def index_on_pixels(self,a):
         return np.transpose(np.vstack(np.where(a)))
@@ -645,6 +668,8 @@ class Clone(object):
         diff = np.power(idxy - (m*idxx + b), 2)
         near_line_idx = np.where(diff < np.percentile(diff, 2))
         near_line = np.transpose(np.vstack([idxx[near_line_idx], idxy[near_line_idx]]))
+        
+        near_line = near_line[np.linalg.norm(near_line - p2, axis=1) - self.dist(p1, p2) < 0]
 
         try:
             j = np.argmin(np.linalg.norm(near_line-p2, axis=1))
@@ -790,11 +815,12 @@ class Clone(object):
 
         self.pedestal_area = np.abs(np.sum((y[1:] + y[:-1])*(x[1:] - x[:-1])/2))
 
-    def interpolate(self, pedestal_n=200, **kwargs):
+    def interpolate(self, dorsal_edge, pedestal_n=500, **kwargs):
 
-        p = self.pedestal
+        p = dorsal_edge
         diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)
         biggest_gaps = np.where(diff == np.max(diff))[0]
+
         while p.shape[0] < pedestal_n:
  
             i = random.choice(biggest_gaps)
@@ -807,5 +833,4 @@ class Clone(object):
             if len(biggest_gaps) == 0:
                 diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)
                 biggest_gaps = np.where(diff == np.max(diff))[0]
-
-        self.pedestal = p
+        return p
