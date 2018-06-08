@@ -485,13 +485,13 @@ class Clone(object):
         
         self.tail_spine_length = self.dist(self.tail_base, self.tail_tip)
 
-    def get_dorsal_edge(self, im, dorsal_edge_blur=0.8, canny_minval=0, canny_maxval=50,**kwargs):
+    def get_dorsal_edge(self, im, dorsal_edge_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
         
         hx, hy = self.head
         tx_d, ty_d = self.tail_dorsal
         cx, cy = self.animal_x_center, self.animal_y_center
 
-        hc = self.high_contrast(im)
+        hc = self.high_contrast(im) 
         edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
 
         edges = self.mask_antenna(edges, (cx, cy),
@@ -513,7 +513,7 @@ class Clone(object):
         
         m,b = self.line_fit(checkpoints[4], self.tail_dorsal)
 
-        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(self.head), np.array(checkpoints[0]), flag="head")
+        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[0]), np.array(self.head))[::-1]
 
         for k in np.arange(9):
             try:
@@ -570,7 +570,7 @@ class Clone(object):
         else:
             return x1, y1
 
-    def traverse_dorsal_edge(self, edges, current,target,flag="dorsal",**kwargs):
+    def traverse_dorsal_edge(self, edges, current,target,**kwargs):
 
         idx = self.index_on_pixels(edges)
 
@@ -624,6 +624,20 @@ class Clone(object):
 
         return dorsal_edge
     
+    def qscore(self):
+        
+        m1, b1 = self.line_fit(self.head, self.tail_dorsal) 
+        d = self.dorsal_edge
+        self.q = np.abs(b + m*d[:,0] -d[:,1])/np.sqrt(1 + m**2)
+        
+        m2 = -1/m1
+        b2 = d[:,1] - m2*d[:,0]
+
+        x = (b2 - b1)/(m1 - m2)
+        y = m1*x + b1
+        
+        self.qi = np.linalg.norm(np.transpose(np.vstack([x,y])) - self.head, axis=1)/self.dist(self.head, self.tail_dorsal)        
+        
     def index_on_pixels(self,a):
         return np.transpose(np.vstack(np.where(a)))
     
@@ -643,20 +657,6 @@ class Clone(object):
         x = (n - data[np.argmax(data[:,1]), 0]) * self.dist(self.head, self.dorsal_point)/400
         hyp = self.dist((n,0), (x, np.max(data[:,1])))
         self.pedestal_theta = np.arcsin((n - x)/hyp)*(180/np.pi)
-
-    def find_edge(self, im, p1, p2, t1=0.1, npoints=400, lp=np.nan, t2=2):
-
-        xx, yy = np.linspace(p1[1], p2[1], npoints), np.linspace(p1[0], p2[0], npoints)
-        zi = mc(im, np.vstack((yy, xx)), mode="nearest")
-        zi = pd.rolling_mean(zi, 4)
-
-        for i in xrange(len(zi)):
-            if zi[i] > t1:
-                if lp is np.nan: return(yy[i], xx[i])
-                elif self.dist((yy[i], xx[i]), lp) < t2:
-                    return (yy[i], xx[i])
-                else:
-                    continue
 
     def find_edge2(self, edges, p1, p2):
 
