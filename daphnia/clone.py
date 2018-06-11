@@ -628,7 +628,7 @@ class Clone(object):
         
         m1, b1 = self.line_fit(self.head, self.tail_dorsal) 
         d = self.dorsal_edge
-        self.q = np.abs(b + m*d[:,0] -d[:,1])/np.sqrt(1 + m**2)
+        self.q = np.abs(b1 + m1*d[:,0] -d[:,1])/np.sqrt(1 + m1**2)
         
         m2 = -1/m1
         b2 = d[:,1] - m2*d[:,0]
