@@ -9,7 +9,7 @@ import numpy as np
 
 def analyze_clone(clone, im, params):
 
-    #try:
+    try:
         print "Detecting eye"
         clone.find_eye(im, **params)
         print "Masking antenna"
@@ -25,32 +25,33 @@ def analyze_clone(clone, im, params):
         clone.get_animal_length()
         print "Fitting and analyzing pedestal"
         clone.get_dorsal_edge(im,**params)
-        print clone.dorsal_edge
-    #except Exception as e:
-    #    print "Error analyzing " + str(clone.filepath) + ": " + str(e)
+        clone.qscore()
+    except Exception as e:
+        print "Error analyzing " + str(clone.filepath) + ": " + str(e)
 
-def write_clone(clone, cols, metadata_fields, metadata, output, pedestal_output):
-    
+def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
+
     try:
-   	if os.stat(output).st_size == 0:
+        if (os.stat(output).st_size == 0):
             raise OSError
     except (OSError):
-	print "Starting new output file"
+        print "Starting new output file"
         try:
-	    with open(output, "wb+") as f:
+            with open(output, "wb+") as f:
                 f.write( "\t".join(metadata_fields)+ "\t" + "\t".join(cols) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
+            pass
     
     try:
-   	if os.stat(pedestal_output).st_size == 0:
+        if (os.stat(shape_output).st_size == 0):
             raise OSError
     except (OSError):
-	print "Starting new pedestal output file"
-
+        print "Starting new pedestal output file"
+        
         try:
-	    with open(pedestal_output, "wb+") as f:
-	        f.write( "\t".join(["filepath","i","x","y"]) + "\n")
+            with open(shape_output, "wb+") as f:
+                f.write( "\t".join(["filepath","i","x","y","qi","q"]) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
 
@@ -93,10 +94,10 @@ def write_clone(clone, cols, metadata_fields, metadata, output, pedestal_output)
 
             f.write( "\t".join(tmpdata) + "\n")
         try:
-        
-            with open(pedestal_output, "ab+") as f:
-                for i in np.arange(len(clone.pedestal)):
-                    f.write('\t'.join([clone.filepath, str(i), str(clone.pedestal[i,0]), str(clone.pedestal[i,1])]) + '\n')
+            with open(shape_output, "ab+") as f:
+                for i in np.arange(len(clone.dorsal_edge)):
+                    f.write('\t'.join([clone.filepath, str(i), str(clone.dorsal_edge[i,0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i])]) + '\n')
+
         except Exception as e:
             print "Error writing pedestal to file: " + str(e)
     except (IOError, AttributeError) as e:
@@ -209,7 +210,7 @@ def daphnia(params, images, plot, plot_params):
                 metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data)
             except Exception:
                 print "Error gathering metadata: " + str(e)
-        write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['pedestal_output'])
+        write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['shape_output'])
 
         if plot:
             clone.filebase = metadata['filebase']

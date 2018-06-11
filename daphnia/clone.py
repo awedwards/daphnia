@@ -269,8 +269,8 @@ class Clone(object):
 
         self.animal_length = self.dist(self.head, self.tail)
 
-    def find_features(self, im, mask_antenna_blur=1.5,
-            mask_antenna_cnx_comp_threshold=150,
+    def find_features(self, im, mask_antenna_blur=1.25,
+            edge_pixel_distance_threshold_multiplier=3,
             mask_antenna_coronal_tilt = 0.7,
             mask_antenna_anterior_tilt=20,
             mask_antenna_posterior_tilt=2,
@@ -282,20 +282,25 @@ class Clone(object):
         hc = self.high_contrast(im)
 
         edge_image = cv2.Canny(np.array(255*gaussian(hc, mask_antenna_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
-        edge_labels = measure.label(edge_image, background = 0)
-
         edge_copy = edge_image.copy()
+
+        edge_index = np.transpose(np.where(edge_image))
         
-        labels = np.ndarray.flatten(np.argwhere(np.bincount(np.ndarray.flatten(edge_labels[np.nonzero(edge_labels)])) > mask_antenna_cnx_comp_threshold))
-        big_cc = np.isin(edge_labels, labels) 
-        big_cc_x = np.where(big_cc)[0]
-        big_cc_y = np.where(big_cc)[1]
+        # first estimate of animal center
+        self.animal_x_center, self.animal_y_center = np.mean(edge_index, axis=0)
+        cx, cy = self.animal_x_center, self.animal_y_center
 
-        idx = np.argmax(np.linalg.norm(np.vstack(np.where(big_cc)).T - np.array((self.eye_x_center, self.eye_y_center)), axis=1))
-        tx = big_cc_x[idx]
-        ty = big_cc_y[idx]
-
-        self.tail_tip = (tx, ty)
+        # distances from edge pixels to center
+        d_edgepixel_center = np.linalg.norm(edge_index - np.array([cx, cy]), axis=1)
+        
+        # filter out edge_index for edge pixels that are too far from the animal
+        dhalf_length = np.linalg.norm(np.array((cx,cy)) - np.array((ex, ey)))
+        edge_index = edge_index[np.transpose(np.where(d_edgepixel_center < edge_pixel_distance_threshold_multiplier*dhalf_length)[0])]
+        
+        # tail_tip is most likely to be the max dot product of vector from center to edge_pixel and vector from eye_center to center
+        tail_tip_index = np.argmax(np.dot(edge_index-np.array([cx,cy]), np.array([cx-ex, cy-ey]))) 
+        self.tail_tip = edge_index[tail_tip_index, :]
+        tx, ty = self.tail_tip
 
         cx, cy = (tx + ex)/2, (ty + ey)/2
 

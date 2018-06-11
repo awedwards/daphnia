@@ -5,7 +5,7 @@ daphnia_plot_resolution, 300
 
 eye_mask, 1
 eye_mask_color, yellow
-eye_mask_alpha, 0.1
+eye_mask_alpha, 0.25
 eye_mask_markersize,1
 
 antenna_mask, 0
@@ -25,7 +25,7 @@ landmark_color, blue
 landmark_style, pixel
 landmark_size, 5
 
-animal_length_plot, 0
+animal_length_plot, 1
 animal_length_plot_color, black
 animal_length_linewidth, 5
 
