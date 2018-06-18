@@ -74,9 +74,10 @@ class Clone(object):
         self.deyecenter_pedestalmax = np.nan
         self.poly_coeff = np.nan
         self.res = np.nan
-
+        self.dorsal_residual = np.nan
+        
         # quality check flags
-        self.automated_PF = "U"
+        self.automated_PF = "P"
         self.automated_PF_reason = ''
 
         self.analyzed = False
@@ -639,7 +640,8 @@ class Clone(object):
         y = m1*x + b1
         
         self.qi = np.linalg.norm(np.transpose(np.vstack([x,y])) - self.head, axis=1)/self.dist(self.head, self.tail_dorsal)        
-        
+        self.check_dorsal_edge_fit()
+
     def index_on_pixels(self,a):
         return np.transpose(np.vstack(np.where(a)))
     
@@ -734,6 +736,14 @@ class Clone(object):
     def norm(self, x):
 
         return (x - np.min(x)) / (np.max(x) - np.min(x))
+    
+    def check_dorsal_edge_fit(self):
+        
+        poly_coeff, self.dorsal_residual, _, _, _ = np.polyfit(self.qi, self.q, 4, full=True)
+        
+        if self.dorsal_residual > 20000:
+            self.automated_PF = 'F'
+            self.automated_PF_reason = 'high dorsal residual error'
 
     def analyze_pedestal(self, analyze_pedestal_moving_avg_window=12, analyze_pedestal_percentile=80, analyze_pedestal_polyfit_degree=3, pedestal_n=400, **kwargs):
     

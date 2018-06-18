@@ -54,7 +54,7 @@ def parse(s):
             "rig":rigId,
             "datetime":datetime}
 
-def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict, early_release, late_release, duplicate_data):
+def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict, early_release, late_release, duplicate_data, experimenter_data, inducer_data):
 
     _, filebase = os.path.split(filepath)
     md = parse(filebase)
@@ -76,12 +76,12 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
     
     md['manual_PF'] = 'U'
     md['manual_PF_reason'] = ""
-
-    if md['cloneid'] in male_list:
+    
+    if md['barcode'] in male_list:
         md['manual_PF'] = "F"
         md['manual_PF_reason'] = "male"
         md['manual_PF_curator'] = "awe"
-
+    
     if not (md['manual_PF'] == 'F'):
         try:
             row = curation_dict[md['filebase']]
@@ -91,7 +91,7 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
         except KeyError:
             md['manual_PF'] = "P"
             md['manual_PF_curator'] = "awe"
-
+   
     try:
         md['inductiondate'] = induction_dict[md['barcode']]
     except KeyError:
@@ -108,9 +108,17 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
         else:
             md['manual_PF'] = 'F'
             md['manual_PF_reason'] = ", ".join([md['manual_PF_reason'], "duplicate", duplicate_data[md['filebase']]])
-
     except KeyError:
         pass
+
+    try:
+        print md['datetime'][0:8]
+        md['experimenter'] = experimenter_data[(md['barcode'], md['datetime'][0:8])]
+        md['inducer'] = inducer_data[(md['barcode'], md['datetime'][0:8])]
+    except KeyError:
+        md['experimenter'] = 'NA'
+        md['inducer'] = 'NA'
+
     return md
 
 def convert_treatment(treatment):
@@ -130,7 +138,7 @@ def convert_treatment(treatment):
     
     return treatment
 
-def recursive_dict(): 
+def recursivedict(): 
     # initializes a default dictionary with an arbitrary number of dimensions
 
     return defaultdict(recursivedict)
@@ -349,9 +357,21 @@ def load_manual_curation(csvpath):
     curation_data = {}
 
     for i, row in df.iterrows():
-        curation_data[row['filebase'][5:] + ".bmp"] = row
+        curation_data[row['filebase'] + ".bmp"] = row
     
     return curation_data
+
+def load_experimenter_data(csvpath):
+
+    df = pd.read_csv(csvpath)
+    experimenter_data = {}
+    inducer_data = {}
+
+    for i, row in df.iterrows():
+        experimenter_data[(str(row['Barcode']),str(row['Date']))] = row['Initials']
+        inducer_data[(str(row['Barcode']),str(row['Date']))] = row['Inductions']
+    print experimenter_data.keys()
+    return experimenter_data, inducer_data
 
 def write_clone(clone, cols, path, outfile):
 

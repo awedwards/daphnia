@@ -7,6 +7,7 @@ pond_season_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/season_metadata.
 early_release_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/early_released.csv
 late_release_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/late_released.csv
 duplicate_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/duplications_age_RP.csv
+experimenter_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/Phenotyping_Data_Initials_Inductions.csv
 
 fit_ellipse_chi2,3 
 find_eye_blur, 0.5

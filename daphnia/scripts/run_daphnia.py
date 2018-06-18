@@ -161,7 +161,10 @@ def daphnia(params, images, plot, plot_params):
             "poly_coeff",
             "res",
             "peak",
-            "deyecenter_pedestalmax"]
+            "deyecenter_pedestalmax",
+            "dorsal_residual",
+            "automated_PF",
+            "automated_PF_reason"]
 
     METADATA_FIELDS = ["filebase",
             "barcode",
@@ -184,14 +187,18 @@ def daphnia(params, images, plot, plot_params):
             "tail_spine_length_mm",
             "deyecenter_pedestalmax_mm",
             "pedestal_area_mm",
-            "pedestal_max_height_mm"]
+            "pedestal_max_height_mm",
+            "experimenter",
+            "inducer"]
 
     params_dict = myParse(params)
 
     if plot:
+        
         plot_params_dict = myParse(plot_params)
     
     if params_dict['load_metadata']:
+        
         curation_data = utils.load_manual_curation(params_dict['curation_csvpath'])
         males_list = utils.load_male_list(params_dict['male_listpath'])
         induction_dates = utils.load_induction_data(params_dict['induction_csvpath'])
@@ -199,6 +206,8 @@ def daphnia(params, images, plot, plot_params):
         early_release = utils.load_release_data(params_dict['early_release_csvpath'])
         late_release = utils.load_release_data(params_dict['late_release_csvpath'])
         duplicate_data = utils.load_duplicate_data(params_dict['duplicate_csvpath'])
+        experimenter_data, inducer_data = utils.load_experimenter_data(params_dict['experimenter_csvpath'])
+
     for image_filepath in images:
         
         click.echo('Analyzing {0}'.format(image_filepath))
@@ -208,7 +217,8 @@ def daphnia(params, images, plot, plot_params):
         analyze_clone(clone, im, params_dict)
         
         if params_dict['load_metadata']:
-            metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data)
+            metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
+
         write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['shape_output'])
 
         if plot:
