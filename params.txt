@@ -1,9 +1,12 @@
 # Metadata filepaths
 load_metadata, True
-curation_csvpath,/mnt/spicy_4/daphnia/analysis/manual_curation.csv
-male_listpath,/mnt/spicy_4/daphnia/analysis/male_list.csv
+curation_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/manual_curation.csv
+male_listpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/male_list.csv
 induction_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/induction
 pond_season_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/season_metadata.csv
+early_release_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/early_released.csv
+late_release_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/late_released.csv
+duplicate_csvpath,/mnt/spicy_4/daphnia/analysis/MetadataFiles/duplications_age_RP.csv
 
 fit_ellipse_chi2,3 
 find_eye_blur, 0.5
