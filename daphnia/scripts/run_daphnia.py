@@ -196,7 +196,9 @@ def daphnia(params, images, plot, plot_params):
         males_list = utils.load_male_list(params_dict['male_listpath'])
         induction_dates = utils.load_induction_data(params_dict['induction_csvpath'])
         season_data = utils.load_pond_season_data(params_dict['pond_season_csvpath'])
-
+        early_release = utils.load_release_data(params_dict['early_release_csvpath'])
+        late_release = utils.load_release_data(params_dict['late_release_csvpath'])
+        duplicate_data = utils.load_duplicate_data(params_dict['duplicate_csvpath'])
     for image_filepath in images:
         
         click.echo('Analyzing {0}'.format(image_filepath))
@@ -206,10 +208,7 @@ def daphnia(params, images, plot, plot_params):
         analyze_clone(clone, im, params_dict)
         
         if params_dict['load_metadata']:
-            try:
-                metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data)
-            except Exception:
-                print "Error gathering metadata: " + str(e)
+            metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data)
         write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['shape_output'])
 
         if plot:

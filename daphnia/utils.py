@@ -54,7 +54,7 @@ def parse(s):
             "rig":rigId,
             "datetime":datetime}
 
-def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict):
+def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict, early_release, late_release, duplicate_data):
 
     _, filebase = os.path.split(filepath)
     md = parse(filebase)
@@ -75,6 +75,7 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
         md['pixel_to_mm'] = np.nan
     
     md['manual_PF'] = 'U'
+    md['manual_PF_reason'] = ""
 
     if md['cloneid'] in male_list:
         md['manual_PF'] = "F"
@@ -96,6 +97,20 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
     except KeyError:
         pass
 
+    if md['barcode'] in early_release:
+        md['manual_PF_reason'] += "; early release"
+    if md['barcode'] in late_release:
+        md['manual_PF_reason'] += "; late release"
+
+    try:
+        if duplicate_data[md['filebase']] == "Use":
+            md['manual_PF_reason'] += "; duplicate"
+        else:
+            md['manual_PF'] = 'F'
+            md['manual_PF_reason'] = ", ".join([md['manual_PF_reason'], "duplicate", duplicate_data[md['filebase']]])
+
+    except KeyError:
+        pass
     return md
 
 def convert_treatment(treatment):
@@ -123,7 +138,7 @@ def recursive_dict():
 def load_induction_data(filepath):
     
     print "Loading induction data\n"
-    inductiondates = dict()
+    inductiondates = {}
     inductionfiles = os.listdir(filepath)
 
     for i in inductionfiles:
@@ -168,32 +183,23 @@ def load_manual_scales(filepath):
     
     return manual_scales
 
-def write_pedestal_data(data, filepath):
-
-    with open(filepath, "w") as f:
-        
-        f.write('\t'.join(["filebase","pedestal_data"]) + "\n")
-
-        for k, v in data.iteritems():
-            f.write('\t'.join([k, v]) + "\n")
-
-def append_pedestal_line(clone_filebase, data, filepath):
-
-    with open(filepath, "a") as f:
-        f.write('\t'.join([clone_filebase, str(data)]) + "\n")
-
-def load_pedestal_data(filepath):
+def load_release_data(filepath):
     
-    data = {}
-    
-    with open(filepath, "r") as f:
+    with open(filepath, "rb") as f:
         line = f.readline()
-        while line:
-            d = line.strip().split("\t")
-            data[d[0]] = np.array(literal_eval(d[1]))
-            line = f.readline()
+    
+    return line.split("\t")
 
-    return data
+def load_duplicate_data(filepath):
+
+    duplicate_dict = {}
+
+    df = pd.read_csv(filepath, index_col="filebase")
+
+    for i, row in df.iterrows():
+        duplicate_dict["full_"+i] = row['Notes']
+
+    return duplicate_dict
 
 def build_clonelist(datadir, analysisdir, inductiondatadir, pondseasondir, ext=".bmp"):
     

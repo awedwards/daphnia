@@ -78,9 +78,6 @@ class Clone(object):
         # quality check flags
         self.automated_PF = "U"
         self.automated_PF_reason = ''
-        self.manual_PF = "U"
-        self.manual_PF_reason = ''
-        self.manual_PF_curator = ''
 
         self.analyzed = False
 
