@@ -78,8 +78,8 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
                     else:
                         val = metadata[mf]
 
-                except KeyError:
-                    val = ''
+                except Exception:
+                    val = 'nan'
                 
                 tmpdata.append( str(val) )
 
