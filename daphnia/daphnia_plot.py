@@ -110,6 +110,13 @@ def plot_dorsal_edge(clone, dorsal_edge_plot=1,
         #p = np.array([list(x) for x in p])
         plt.scatter(p[:,1], p[:,0], c=dorsal_edge_plot_color, s=dorsal_edge_plot_marker_size, alpha=dorsal_edge_plot_alpha)
 
+def plot_dorsal_edge_checkpoints(clone, dorsal_edge_checkpoint_plot=1,
+        dorsal_edge_checkpoint_color="black", **kwargs):
+
+    if dorsal_edge_checkpoint_plot:
+        for pt in clone.checkpoints.values():
+            plt.scatter(pt[1], pt[0], color=dorsal_edge_checkpoint_color)
+
 def plot(clone, im, plot_params):
 
     f = plt.figure(figsize=(20,20))
@@ -121,10 +128,12 @@ def plot(clone, im, plot_params):
     plot_tail_spine_length(clone, **plot_params)
     plot_animal_perimeter(clone, **plot_params)
     plot_dorsal_edge(clone, **plot_params)
-    
+    plot_dorsal_edge_checkpoints(clone, **plot_params) 
     plt.imshow(im, cmap="gray")
     plt.axis('off')
 
     plt.savefig( os.path.join( plot_params["daphnia_plot_dir"], "_".join([plot_params["daphnia_plot_name"],clone.filebase[:-4]]) + "." + plot_params["daphnia_plot_format"]),
             format=plot_params["daphnia_plot_format"],
             dpi=int(plot_params["daphnia_plot_resolution"]))
+
+    plt.close(f)

@@ -90,9 +90,10 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
                 if val is not None:
                     tmpdata.append( val )
                 else:
-                    tmpdata.append("")
+                    tmpdata.append("nan")
 
             f.write( "\t".join(tmpdata) + "\n")
+
         try:
             with open(shape_output, "ab+") as f:
                 for i in np.arange(len(clone.dorsal_edge)):

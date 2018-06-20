@@ -62,11 +62,14 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
     md['treatment'] = convert_treatment(md['treatment'])
 
     # add induction
-    
-    md['pond'] = season_dict[md['cloneid']]['pond']
-    md['id'] = season_dict[md['cloneid']]['id']
-    md['season'] = season_dict[md['cloneid']]['season']
-
+    try:
+        md['pond'] = season_dict[md['cloneid']]['pond']
+        md['id'] = season_dict[md['cloneid']]['id']
+        md['season'] = season_dict[md['cloneid']]['season']
+    except KeyError:
+        md['pond'] = ''
+        md['id'] = ''
+        md['season'] = ''
     try:
         im = cv2.imread(filepath.replace("full","fullMicro"), cv2.IMREAD_GRAYSCALE)
         md['pixel_to_mm'] = calc_pixel_to_mm(im)
@@ -112,7 +115,6 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
         pass
 
     try:
-        print md['datetime'][0:8]
         md['experimenter'] = experimenter_data[(md['barcode'], md['datetime'][0:8])]
         md['inducer'] = inducer_data[(md['barcode'], md['datetime'][0:8])]
     except KeyError:
@@ -370,7 +372,6 @@ def load_experimenter_data(csvpath):
     for i, row in df.iterrows():
         experimenter_data[(str(row['Barcode']),str(row['Date']))] = row['Initials']
         inducer_data[(str(row['Barcode']),str(row['Date']))] = row['Inductions']
-    print experimenter_data.keys()
     return experimenter_data, inducer_data
 
 def write_clone(clone, cols, path, outfile):

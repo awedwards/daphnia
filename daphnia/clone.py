@@ -506,43 +506,67 @@ class Clone(object):
 
         d = self.dist((hx,hy), (self.dorsal_mask_endpoints[0], self.dorsal_mask_endpoints[1]))
 
-        checkpoints = {}
+        checkpoints = {0:self.head}
+        counter=1
 
         for i in np.arange(0,1,0.1):
             mp = (1-i)*hx + i*tx_d, (1-i)*hy + i*ty_d
             x,y = self.orth(mp, d, m, flag="dorsal")
             p2 = self.find_edge2(edges, mp, (x,y))
-            checkpoints[int(i*10)] = p2
+            if p2 is not None:
+                checkpoints[counter] = p2
+                counter+=1
         
-        m,b = self.line_fit(checkpoints[4], self.tail_dorsal)
+        prune = True
+        while prune:
+            prune = False
+            prune_list = []
+            keys = checkpoints.keys()
+            for k in np.arange(1, len(keys) - 1):
 
-        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[0]), np.array(self.head))[::-1]
+                m,b = self.line_fit(checkpoints[keys[k-1]], checkpoints[keys[k+1]])
+                x,y = checkpoints[keys[k]]
+                err = np.abs(b + m*x - y)/np.sqrt(1 + m**2)
+                if err > 20:
+                    prune = True
+                    prune_list.append(keys[k])
 
-        for k in np.arange(9):
+            for i in prune_list:
+                del checkpoints[i]
+
+        keys = checkpoints.keys()
+        
+        m,b = self.line_fit(checkpoints[keys[int(0.5*len(keys))]], self.tail_dorsal)
+        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[keys[1]]), np.array(checkpoints[keys[0]]))[::-1]
+
+        for k in np.arange(1,len(keys)-1):
             try:
-                x,y = checkpoints[k]
-                x_1, y_1 = checkpoints[k+1]
+                x,y = checkpoints[keys[k]]
+                x_1, y_1 = checkpoints[keys[k+1]]
                 err = np.abs(b + m*x -y)/np.sqrt(1 + m**2)
                 err_plus_one = np.abs(b + m*x_1 - y_1)/np.sqrt(1 + m**2)
 
-                if (k>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
+                if (keys[k]>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
                     raise TypeError
                 else:
-                    dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[k], checkpoints[k+1])])
+                    dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[keys[k]], checkpoints[keys[k+1]])])
             except TypeError:
                 continue
 
         try:
-            x,y = checkpoints[9]
+            x,y = checkpoints[keys[-1]]
             err = np.abs(b + m*x - y)/np.sqrt(1+m**2)
             
             if err < self.dist(self.head, self.tail)/16:
-                dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[9], self.tail_dorsal)])
+                dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[keys[-1]], self.tail_dorsal)])
             else:
                 raise TypeError
         except TypeError:
                 dorsal_edge = np.vstack([dorsal_edge, self.tail_dorsal])
+        
+        checkpoints[keys[-1]+1] = self.tail_dorsal
         self.dorsal_edge = self.interpolate(dorsal_edge)
+        self.checkpoints = checkpoints
         
 
     def line_fit(self,p1,p2):
@@ -739,8 +763,9 @@ class Clone(object):
     
     def check_dorsal_edge_fit(self):
         
-        poly_coeff, self.dorsal_residual, _, _, _ = np.polyfit(self.qi, self.q, 4, full=True)
-        
+        poly_coeff, residual, _, _, _ = np.polyfit(self.qi, self.q, 4, full=True)
+        self.dorsal_residual = residual[0]
+
         if self.dorsal_residual > 20000:
             self.automated_PF = 'F'
             self.automated_PF_reason = 'high dorsal residual error'
