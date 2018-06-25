@@ -412,10 +412,43 @@ class Clone(object):
         self.eye_ventral = ep[np.argmin(np.linalg.norm(ep - (ventral_target_x, ventral_target_y), axis=1)), :]
 
     def find_head(self, im, find_head_blur=1.0, canny_minval=0, canny_maxval=50, **kwargs):
-
+        
+        # estimate tail position for now, and a better estimate will be made in get_dorsal_edge
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, find_head_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
+        tx, ty = self.tail_tip
+        target = 3*self.eye_ventral[0] - 2*self.eye_x_center, 3*self.eye_ventral[1] - 2*self.eye_y_center
+        ex, ey = 0.5*tx + 0.5*target[0], 0.5*ty + 0.5*target[1]
+        
+        m = (ty - ey)/(tx - ex)
+        
+        x, y = np.linspace(tx, ex, 100), np.linspace(ty, ey, 100)
+
+        d = self.dist((tx, ty), (ex, ey))/8
+
+        for i in xrange(int(100)):
+            
+            p1, p2 = self.orth((x[i], y[i]), d, m, "both")
+
+            if self.dist(self.ventral, p1) < self.dist(self.ventral, p2):
+                start = p1
+                end = p2
+            else:
+                start = p2
+                end = p1
+
+            e = self.find_edge2(edges, end, start)
+            
+            if e is not None:
+                if self.dist(e, start) < self.dist(p1, p2)/5:
+                    self.tail = e
+                    self.tail_dorsal = self.find_edge2(edges, start, end)
+                    break
+
+        if self.tail is None:
+            self.tail = self.tail_tip
+        
         edx, edy = self.eye_dorsal
 
         tx, ty = self.tail
@@ -445,49 +478,26 @@ class Clone(object):
             # if head edge can't be found, just estimate based on dorsal eye point
             self.head = edx - (-0.05*d*(edx - tx))/d, edy - (-0.05*d*(edy - ty))/d
 
-    def find_tail(self, im, find_tail_blur=1.5, find_tail_n=100, canny_minval=0, canny_maxval=50,**kwargs):
-         
-        hc = self.high_contrast(im)
-        edges = cv2.Canny(np.array(255*gaussian(hc, find_tail_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
+    def find_tail(self, im, find_tail_edge_blur=1.25, canny_minval=0, canny_maxval=50, **kwargs):
+
+        hc = clone.high_contrast(im)
+        edges = cv2.Canny(np.array(255*gaussian(hc, find_tail_edge_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
         tx, ty = self.tail_tip
-        target = 3*self.eye_ventral[0] - 2*self.eye_x_center, 3*self.eye_ventral[1] - 2*self.eye_y_center
-        ex, ey = 0.5*tx + 0.5*target[0], 0.5*ty + 0.5*target[1]
         
-        m = (ty - ey)/(tx - ex)
-        
-        x, y = np.linspace(tx, ex, find_tail_n), np.linspace(ty, ey, find_tail_n)
+        ventral_edge = self.traverse_ventral_edge(edges, self.tail_tip, self.anterior, self.tail_tip - self.ven_vec)
+        dorsal_edge = self.dorsal_edge
 
-        d = self.dist((tx, ty), (ex, ey))/8
+        old_diffs = np.min(np.linalg.norm(dorsal_edge - ventral_edge[0,:], axis=1))
 
-        for i in xrange(int(find_tail_n)):
-            
-            p1, p2 = self.orth((x[i], y[i]), d, m, "both")
-
-            if self.dist(self.ventral, p1) < self.dist(self.ventral, p2):
-                start = p1
-                end = p2
-            else:
-                start = p2
-                end = p1
-
-            e = self.find_edge2(edges, end, start)
-            
-            if e is not None:
-                if self.dist(e, start) < self.dist(p1, p2)/5:
-                    self.tail = e
-                    self.tail_dorsal = self.find_edge2(edges, start, end)
-                    self.tail_base = (self.tail[0] + self.tail_dorsal[0])/2, (self.tail[1] + self.tail_dorsal[1])/2
-                    break
-
-        if self.tail_dorsal is None:
-            self.tail_dorsal = np.nan
-
-        if self.tail is None:
-            self.tail = self.tail_tip
-        
-        self.tail_spine_length = self.dist(self.tail_base, self.tail_tip)
-
+        for i in np.arange(1, len(ventral_edge)):
+            diffs = np.min(np.linalg.norm(dorsal_edge - ventral_edge[i,:], axis=1))
+            if diffs - old_diffs > 2:
+                self.tail = ventral_edge[i,:]
+                self.tail_dorsal = dorsal_edge[np.argmin(np.linalg.norm(dorsal_edge - self.tail, axis=1)), :]
+                break
+            old_diffs = diffs
+    
     def get_dorsal_edge(self, im, dorsal_edge_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
         
         hx, hy = self.head
@@ -564,8 +574,11 @@ class Clone(object):
         except TypeError:
                 dorsal_edge = np.vstack([dorsal_edge, self.tail_dorsal])
         
+        self.dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, self.tail_dorsal, self.tail_tip)])
         checkpoints[keys[-1]+1] = self.tail_dorsal
-        self.dorsal_edge = self.interpolate(dorsal_edge)
+        self.find_tail(im)
+        self.dorsal_edge = self.dorsal_edge[0:np.argmin(np.linalg.norm(self.dorsal_edge - self.tail_dorsal, axis=1)), :]
+        self.dorsal_edge = self.interpolate(self.dorsal_edge)
         self.checkpoints = checkpoints
         
 
@@ -596,6 +609,45 @@ class Clone(object):
             return x2, y2
         else:
             return x1, y1
+
+    def traverse_ventral_edge(self, edges, current, target, ventral, n=200):
+        
+        ventral_edge = [list(current)]
+
+        target_vector = np.array(target) - np.array(current)
+        target_vector = self.norm_vec(target_vector)
+
+        ventral_vector = np.array(ventral) - np.array(current)
+        ventral_vector = self.norm_vec(ventral_vector)
+
+        window = 1
+        w,h = edges.shape
+
+        for i in np.arange(n):
+            
+            idx = self.index_on_pixels(edges[np.max([0, current[0]-window]):np.min([w, current[0]+window+1]),
+                np.max([0, current[1]-window]):np.min([h, current[1]+window+1])]) - (window,window)
+            idx = idx[~np.all(idx == 0, axis=1)]
+
+            try:
+                nxt = current + idx[np.argmax(np.dot(idx, target_vector) + np.dot(idx, ventral_vector))]
+
+                if (list(nxt) in ventral_edge) or (self.dist(nxt, target) > self.dist(current, target)):
+                    raise(ValueError)
+                else:
+                    current = nxt
+                    target_vector = np.array(target) - np.array(current)
+                    target_vector = self.norm_vec(target_vector)
+
+                    ventral_vector = np.array(ventral) - np.array(current)
+                    ventral_vector = self.norm_vec(ventral_vector)
+
+                    ventral_edge.append(list(current))
+                    window=1
+            except ValueError:
+                 window += 1
+
+        return np.vstack(ventral_edge)
 
     def traverse_dorsal_edge(self, edges, current,target,**kwargs):
 
