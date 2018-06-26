@@ -480,7 +480,7 @@ class Clone(object):
 
     def find_tail(self, im, find_tail_edge_blur=1.25, canny_minval=0, canny_maxval=50, **kwargs):
 
-        hc = clone.high_contrast(im)
+        hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, find_tail_edge_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
 
         tx, ty = self.tail_tip
@@ -904,7 +904,7 @@ class Clone(object):
 
         self.pedestal_area = np.abs(np.sum((y[1:] + y[:-1])*(x[1:] - x[:-1])/2))
 
-    def interpolate(self, dorsal_edge, pedestal_n=500, **kwargs):
+    def interpolate(self, dorsal_edge, pedestal_n=700, **kwargs):
 
         p = dorsal_edge
         diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)

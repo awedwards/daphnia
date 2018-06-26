@@ -19,12 +19,11 @@ def analyze_clone(clone, im, params):
         clone.get_orientation_vectors()
         clone.eye_vertices()
         
-        clone.find_tail(im, **params)
         clone.find_head(im, **params)
 
+        clone.get_dorsal_edge(im,**params)
         clone.get_animal_length()
         print "Fitting and analyzing pedestal"
-        clone.get_dorsal_edge(im,**params)
         clone.qscore()
     except Exception as e:
         print "Error analyzing " + str(clone.filepath) + ": " + str(e)
