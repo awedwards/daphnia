@@ -15,7 +15,6 @@ def analyze_clone(clone, im, params):
         print "Masking antenna"
         clone.find_features(im, **params)
         print "Estimating area"
-        #clone.count_animal_pixels(im, **params)
         clone.get_orientation_vectors()
         clone.eye_vertices()
         
@@ -23,6 +22,8 @@ def analyze_clone(clone, im, params):
 
         clone.get_dorsal_edge(im,**params)
         clone.get_animal_length()
+        clone.get_animal_dorsal_area()
+
         print "Fitting and analyzing pedestal"
         clone.qscore()
     except Exception as e:

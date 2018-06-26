@@ -266,6 +266,10 @@ class Clone(object):
     def get_animal_length(self):
 
         self.animal_length = self.dist(self.head, self.tail)
+    
+    def get_animal_area(self):
+
+        self.animal_area = self.area(self.dorsal_edge[:,0], self.dorsal_edge[:,1])
 
     def find_features(self, im, mask_antenna_blur=1.25,
             edge_pixel_distance_threshold_multiplier=3,
