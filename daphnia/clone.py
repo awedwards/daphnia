@@ -16,6 +16,7 @@ class Clone(object):
         self.filepath = filepath
 
         self.animal_area = np.nan
+        self.animal_dorsal_area = np.nan
         self.eye_area = np.nan
         self.animal_length = np.nan
         self.pedestal = np.nan
@@ -267,9 +268,9 @@ class Clone(object):
 
         self.animal_length = self.dist(self.head, self.tail)
     
-    def get_animal_area(self):
+    def get_animal_dorsal_area(self):
 
-        self.animal_area = self.area(self.dorsal_edge[:,0], self.dorsal_edge[:,1])
+        self.animal_dorsal_area = np.abs(self.area(self.dorsal_edge[:,0], self.dorsal_edge[:,1]))
 
     def find_features(self, im, mask_antenna_blur=1.25,
             edge_pixel_distance_threshold_multiplier=3,

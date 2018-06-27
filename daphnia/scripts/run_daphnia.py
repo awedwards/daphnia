@@ -61,8 +61,8 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
             tmpdata = []
             for mf in metadata_fields:
                 try:
-                    if mf == "animal_area_mm":
-                        val = getattr(clone,'animal_area')/np.power(metadata["pixel_to_mm"],2)
+                    if mf == "animal_dorsal_area_mm":
+                        val = getattr(clone,'animal_dorsal_area')/np.power(metadata["pixel_to_mm"],2)
                     elif mf == "eye_area_mm":
                         val = getattr(clone,'eye_area')/np.power(metadata["pixel_to_mm"],2)
                     elif mf == "animal_length_mm":
@@ -130,7 +130,7 @@ def myParse(params):
 def daphnia(params, images, plot, plot_params):
     
     DATA_COLS = ["filepath",
-            "animal_area",
+            "animal_dorsal_area",
             "eye_area",
             "animal_length",
             "animal_x_center",
@@ -182,7 +182,7 @@ def daphnia(params, images, plot, plot_params):
             "manual_PF_curator",
             "pixel_to_mm",
             "season",
-            "animal_area_mm",
+            "animal_dorsal_area_mm",
             "animal_length_mm",
             "eye_area_mm",
             "tail_spine_length_mm",
