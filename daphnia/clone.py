@@ -47,6 +47,8 @@ class Clone(object):
         self.posterior = np.nan
         self.dorsal = np.nan
         self.ventral = np.nan
+
+        self.flip = False
         
         # these are directional vectors of anatomical direction starting at animal center
         self.ant_vec = np.nan
@@ -322,6 +324,9 @@ class Clone(object):
        
         edge_copy = self.mask_antenna(edge_copy, (cx, cy), a=[hx1, hy1, vd1[0], vd1[1]], b=[hx1, hy1, vd2[0], vd2[1]], c=[top1[0], top1[1], top2[0], top2[1]])
         self.get_anatomical_directions(edge_copy)
+        
+        if self.flip:
+            self.flip_dorsal_ventral()
 
         if self.dist( self.ventral, vd1 ) < self.dist( self.ventral, vd2 ):
             self.ventral_mask_endpoints = ((hx1, hy1), vd1)
@@ -347,6 +352,12 @@ class Clone(object):
         self.anterior_mask_endpoints = [top1[0], top1[1], top2[0], top2[1]]
         self.edge_copy = edge_copy
     
+    def flip_dorsal_ventral(self):
+        
+        tmp = self.ventral
+        self.ventral = self.dorsal
+        self.dorsal = tmp
+
     def mask_antenna(self, edge, center, **kwargs):
         
         cx, cy = center
@@ -503,7 +514,7 @@ class Clone(object):
                 break
             old_diffs = diffs
     
-    def get_dorsal_edge(self, im, dorsal_edge_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
+    def initialize_dorsal_edge(self, im, dorsal_edge_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
         
         hx, hy = self.head
         tx_d, ty_d = self.tail_dorsal
@@ -521,7 +532,7 @@ class Clone(object):
 
         d = self.dist((hx,hy), (self.dorsal_mask_endpoints[0], self.dorsal_mask_endpoints[1]))
 
-        checkpoints = {0:self.head}
+        checkpoints = [self.head]
         counter=1
 
         for i in np.arange(0,1,0.1):
@@ -529,64 +540,72 @@ class Clone(object):
             x,y = self.orth(mp, d, m, flag="dorsal")
             p2 = self.find_edge2(edges, mp, (x,y))
             if p2 is not None:
-                checkpoints[counter] = p2
+                checkpoints.append(p2)
                 counter+=1
+    
+        checkpoints.append(self.tail_dorsal)
+        self.checkpoints = np.array(checkpoints)
+
+    def prune_checkpoints(self):
         
+        checkpoints = self.checkpoints
         prune = True
+
         while prune:
             prune = False
             prune_list = []
-            keys = checkpoints.keys()
-            for k in np.arange(1, len(keys) - 1):
+            for k in np.arange(1, len(checkpoints)-1):
 
-                m,b = self.line_fit(checkpoints[keys[k-1]], checkpoints[keys[k+1]])
-                x,y = checkpoints[keys[k]]
+                m,b = self.line_fit(checkpoints[k-1], checkpoints[k+1])
+                x,y = checkpoints[k]
                 err = np.abs(b + m*x - y)/np.sqrt(1 + m**2)
                 if err > 20:
                     prune = True
-                    prune_list.append(keys[k])
-
-            for i in prune_list:
-                del checkpoints[i]
-
-        keys = checkpoints.keys()
+                    prune_list.append(k)
+            
+            mask = np.ones(len(checkpoints), dtype=bool)
+            mask[prune_list] = False
+            checkpoints = checkpoints[mask, :]
         
-        m,b = self.line_fit(checkpoints[keys[int(0.5*len(keys))]], self.tail_dorsal)
-        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[keys[1]]), np.array(checkpoints[keys[0]]))[::-1]
+        self.checkpoints = np.vstack(checkpoints)
 
-        for k in np.arange(1,len(keys)-1):
+    def fit_dorsal_edge(self, im, dorsal_edge_blur=1.0, canny_minval=0, canny_maxval=50,**kwargs):
+        
+        cx, cy = self.animal_x_center, self.animal_y_center
+        
+        hc = self.high_contrast(im) 
+        edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
+        edges = self.mask_antenna(edges, (cx, cy),
+                dorsal=self.dorsal_mask_endpoints,
+                ventral=self.ventral_mask_endpoints,
+                anterior=self.anterior_mask_endpoints)
+
+        self.prune_checkpoints()
+        checkpoints = self.checkpoints
+        dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[1]), np.array(checkpoints[0]))[::-1]
+        m,b = self.line_fit(checkpoints[int(0.5*len(checkpoints))], self.tail_dorsal)    
+
+        for k in np.arange(1,len(checkpoints)-1):
             try:
-                x,y = checkpoints[keys[k]]
-                x_1, y_1 = checkpoints[keys[k+1]]
+                x,y = checkpoints[k,:]
+                x_1, y_1 = checkpoints[k+1,:]
                 err = np.abs(b + m*x -y)/np.sqrt(1 + m**2)
                 err_plus_one = np.abs(b + m*x_1 - y_1)/np.sqrt(1 + m**2)
 
-                if (keys[k]>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
+                if (k>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
                     raise TypeError
                 else:
-                    dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[keys[k]], checkpoints[keys[k+1]])])
+                    dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[k,:], checkpoints[k+1,:])])
             except TypeError:
                 continue
-
-        try:
-            x,y = checkpoints[keys[-1]]
-            err = np.abs(b + m*x - y)/np.sqrt(1+m**2)
-            
-            if err < self.dist(self.head, self.tail)/16:
-                dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[keys[-1]], self.tail_dorsal)])
-            else:
-                raise TypeError
-        except TypeError:
-                dorsal_edge = np.vstack([dorsal_edge, self.tail_dorsal])
         
-        self.dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, self.tail_dorsal, self.tail_tip)])
-        checkpoints[keys[-1]+1] = self.tail_dorsal
-        self.find_tail(im)
+        self.dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, self.tail_dorsal, self.tail_tip)])    
+
+    def remove_tail_spine(self):
+        
         self.dorsal_edge = self.dorsal_edge[0:np.argmin(np.linalg.norm(self.dorsal_edge - self.tail_dorsal, axis=1)), :]
         self.dorsal_edge = self.interpolate(self.dorsal_edge)
-        self.checkpoints = checkpoints
         
-
     def line_fit(self,p1,p2):
         
         # returns slope and y-intercept of line between two points

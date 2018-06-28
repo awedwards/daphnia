@@ -17,10 +17,13 @@ def analyze_clone(clone, im, params):
         print "Estimating area"
         clone.get_orientation_vectors()
         clone.eye_vertices()
-        
-        clone.find_head(im, **params)
 
-        clone.get_dorsal_edge(im,**params)
+        clone.find_head(self.image, **self.params)
+        self.clone.initialize_dorsal_edge(self.image, **self.params)
+        self.clone.fit_dorsal_edge(self.image, **self.params)
+        self.clone.find_tail(self.image)
+        self.clone.remove_tail_spine()find_head(im, **params)
+
         clone.get_animal_length()
         clone.get_animal_dorsal_area()
 
