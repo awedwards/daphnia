@@ -304,7 +304,7 @@ class Clone(object):
         
         # tail_tip is most likely to be the max dot product of vector from center to edge_pixel and vector from eye_center to center
         tail_tip_index = np.argmax(np.dot(edge_index-np.array([cx,cy]), np.array([cx-ex, cy-ey]))) 
-        self.tail_tip = edge_index[tail_tip_index, :]
+        self.tail_tip = tuple(edge_index[tail_tip_index, :])
         tx, ty = self.tail_tip
 
         cx, cy = (tx + ex)/2, (ty + ey)/2
@@ -432,7 +432,6 @@ class Clone(object):
         # estimate tail position for now, and a better estimate will be made in get_dorsal_edge
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, find_head_blur), dtype=np.uint8), canny_minval, canny_maxval)/255
-
         tx, ty = self.tail_tip
         target = 3*self.eye_ventral[0] - 2*self.eye_x_center, 3*self.eye_ventral[1] - 2*self.eye_y_center
         ex, ey = 0.5*tx + 0.5*target[0], 0.5*ty + 0.5*target[1]
@@ -501,7 +500,9 @@ class Clone(object):
 
         tx, ty = self.tail_tip
         
-        ventral_edge = self.traverse_ventral_edge(edges, self.tail_tip, self.anterior, self.tail_tip - self.ven_vec)
+        #ventral_edge = self.traverse_ventral_edge(edges, self.tail_tip, self.anterior, self.tail_tip - self.ven_vec) 
+        ventral_edge = self.traverse_ventral_edge(edges, self.tail_tip, self.anterior, np.array(self.tail_tip) - np.array(self.ven_vec))
+        
         dorsal_edge = self.dorsal_edge
 
         old_diffs = np.min(np.linalg.norm(dorsal_edge - ventral_edge[0,:], axis=1))
@@ -605,7 +606,8 @@ class Clone(object):
         
         self.dorsal_edge = self.dorsal_edge[0:np.argmin(np.linalg.norm(self.dorsal_edge - self.tail_dorsal, axis=1)), :]
         self.dorsal_edge = self.interpolate(self.dorsal_edge)
-        
+        self.checkpoints[-1,:] = self.dorsal_edge[-1,:]
+    
     def line_fit(self,p1,p2):
         
         # returns slope and y-intercept of line between two points

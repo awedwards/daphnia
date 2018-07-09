@@ -265,10 +265,10 @@ def build_clonelist(datadir, analysisdir, inductiondatadir, pondseasondir, ext="
     
     return clones
 
-def csv_to_df(csvfile):
+def csv_to_df(csvfile, sep="\t"):
     
     try:
-        return pd.read_csv(csvfile, sep="\t")
+        return pd.read_csv(csvfile, sep=sep)
     except Exception as e:
         print "Could not load csv because: " + str(e)
     
@@ -305,26 +305,19 @@ def df_to_clonelist(df, datadir = None):
     
     return clones
 
-def dfrow_to_clonelist(df, irow, datadir = None):
+def dfrow_to_clone(df, irow, datadir = None):
     
-    clf = load_SVM()
     row = df.iloc[irow]
+    clone = Clone(row['filepath'])
 
-    return Clone( row['filebase'],
-		'full',
-                row['barcode'],
-                row['cloneid'],
-                row['treatment'],
-                row['replicate'],
-                row['rig'],
-                row['datetime'],
-                row['inductiondate'],
-                row['pond'],
-                row['id'],
-                row['season'],
-                datadir,
-                clf=clf)
-
+    for k,v in row.iteritems():           
+        try:
+            setattr(clone, k, literal_eval(v))
+        except (ValueError, SyntaxError):
+            setattr(clone, k, v)
+    
+    return clone
+    
 def update_clone_list(clones, loadedclones):
 
      for barcode in loadedclones.iterkeys():
@@ -373,27 +366,6 @@ def load_experimenter_data(csvpath):
         experimenter_data[(str(row['Barcode']),str(row['Date']))] = row['Initials']
         inducer_data[(str(row['Barcode']),str(row['Date']))] = row['Inductions']
     return experimenter_data, inducer_data
-
-def write_clone(clone, cols, path, outfile):
-
-    try:        
-        with open(os.path.join(path, outfile), "ab+") as f:
-
-            tmpdata = []
-                    
-            for c in cols:
-            
-                val = str(getattr(clone, c))
-                
-                if val is not None:
-                    tmpdata.append( val )
-                else:
-                    tmpdata.append("")
-        
-            f.write( "\t".join(tmpdata) + "\n")
-
-    except (IOError, AttributeError) as e:
-        print "Can't write clone data to file: " + str(e)
 
 def crop(img):
         
@@ -593,3 +565,91 @@ def calc_pixel_to_mm(im):
 	except ZeroDivisionError:
 	    continue
     return np.mean(measurements)
+
+def myParse(params):
+
+    params_dict = {}
+
+    with open(params) as f:
+        for line in f:
+            if not line.startswith("#"):
+                try:
+                    param_name, param_value = line.split(',')
+                    try:
+                        params_dict[param_name] = literal_eval(param_value.strip())
+                    except (ValueError, SyntaxError):
+                        params_dict[param_name] = param_value.strip()
+                except ValueError:
+                    pass
+    return params_dict
+
+def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
+
+    try:
+        if (os.stat(output).st_size == 0):
+            raise OSError
+    except (OSError):
+        print "Starting new output file"
+        try:
+            with open(output, "wb+") as f:
+                f.write( "\t".join(metadata_fields)+ "\t" + "\t".join(cols) + "\n")
+        except IOError:
+            print "Can't find desired location for saving data"
+            pass
+
+    try:
+        if (os.stat(shape_output).st_size == 0):
+            raise OSError
+    except (OSError):
+        print "Starting new pedestal output file"
+
+        try:
+            with open(shape_output, "wb+") as f:
+                f.write( "\t".join(["filepath","i","x","y","qi","q"]) + "\n")
+        except IOError:
+            print "Can't find desired location for saving data"
+    
+    try:
+        with open(output, "ab+") as f:
+
+            tmpdata = []
+            for mf in metadata_fields:
+                try:
+                    if mf == "animal_dorsal_area_mm":
+                        val = getattr(clone, "animal_dorsal_area")/np.power(metadata["pixel_to_mm"], 2)
+                    elif mf == "eye_area_mm":
+                        val = getattr(clone, "eye_area")/np.power(metadata["pixel_to_mm"], 2)
+                    elif mf == "animal_length_mm":
+                        val = getattr(clone, "animal_length")/metadata["pixel_to_mm"]
+                    elif mf == "tail_spine_length_mm":
+                        val = getattr(clone, "tail_spine_length")/metadata["pixel_to_mm"]
+                    elif mf == "pedestal_area_mm":
+                        val = getattr(clone, "pedestal_area")/np.power(metadata["pixel_to_mm"], 2)
+                    elif mf == "pedestal_max_height_mm":
+                        val = getattr(clone, "pedestal_max_height")/metadata["pixel_to_mm"]
+                    elif mf == "deyecenter_pedestalmax_mm":
+                        val = getattr(clone, "deyecenter_pedestalmax")/metadata["pixel_to_mm"]
+                    else:
+                        val = metadata[mf]
+                except Exception:
+                    val = "nan"
+
+            for c in cols:
+                val = str(getattr(clone, c))
+
+                if val is not None:
+                    tmpdata.append(val)
+                else:
+                    tmpdata.append("nan")
+            
+            f.write("\t".join(tmpdata) + "\n")
+
+        try:
+            with open(shape_output, "ab+") as f:
+                for i in np.arange(len(clone.dorsal_edge)):
+                    f.write('\t'.join([clone.filepath, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i])]) + "\n")
+        except Exception as e:
+            print "Error writing dorsal edge to file: " + str(e)
+
+    except (IOError, AttributeError) as e:
+        print "Can't write data for " + clone.filepath + " to file: " + str(e)

@@ -22,7 +22,7 @@ def analyze_clone(clone, im, params):
         self.clone.initialize_dorsal_edge(self.image, **self.params)
         self.clone.fit_dorsal_edge(self.image, **self.params)
         self.clone.find_tail(self.image)
-        self.clone.remove_tail_spine()find_head(im, **params)
+        self.clone.remove_tail_spine()
 
         clone.get_animal_length()
         clone.get_animal_dorsal_area()
@@ -31,98 +31,6 @@ def analyze_clone(clone, im, params):
         clone.qscore()
     except Exception as e:
         print "Error analyzing " + str(clone.filepath) + ": " + str(e)
-
-def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
-
-    try:
-        if (os.stat(output).st_size == 0):
-            raise OSError
-    except (OSError):
-        print "Starting new output file"
-        try:
-            with open(output, "wb+") as f:
-                f.write( "\t".join(metadata_fields)+ "\t" + "\t".join(cols) + "\n")
-        except IOError:
-            print "Can't find desired location for saving data"
-            pass
-    
-    try:
-        if (os.stat(shape_output).st_size == 0):
-            raise OSError
-    except (OSError):
-        print "Starting new pedestal output file"
-        
-        try:
-            with open(shape_output, "wb+") as f:
-                f.write( "\t".join(["filepath","i","x","y","qi","q"]) + "\n")
-        except IOError:
-            print "Can't find desired location for saving data"
-
-    try:
-        with open(output, "ab+") as f:
-
-            tmpdata = []
-            for mf in metadata_fields:
-                try:
-                    if mf == "animal_dorsal_area_mm":
-                        val = getattr(clone,'animal_dorsal_area')/np.power(metadata["pixel_to_mm"],2)
-                    elif mf == "eye_area_mm":
-                        val = getattr(clone,'eye_area')/np.power(metadata["pixel_to_mm"],2)
-                    elif mf == "animal_length_mm":
-                        val = getattr(clone,'animal_length')/metadata["pixel_to_mm"]
-                    elif mf == "tail_spine_length_mm":
-                        val = getattr(clone,'tail_spine_length')/metadata["pixel_to_mm"]
-                    elif mf == "pedestal_area_mm":
-                        val = getattr(clone,'pedestal_area')/np.power(metadata["pixel_to_mm"],2)
-                    elif mf == "pedestal_max_height_mm":
-                        val = getattr(clone,'pedestal_max_height')/metadata["pixel_to_mm"]
-                    elif mf == "deyecenter_pedestalmax_mm":
-                        val = getattr(clone,'deyecenter_pedestalmax')/metadata["pixel_to_mm"]
-                    else:
-                        val = metadata[mf]
-
-                except Exception:
-                    val = 'nan'
-                
-                tmpdata.append( str(val) )
-
-            for c in cols:
-
-                val = str(getattr(clone, c))
-
-                if val is not None:
-                    tmpdata.append( val )
-                else:
-                    tmpdata.append("nan")
-
-            f.write( "\t".join(tmpdata) + "\n")
-
-        try:
-            with open(shape_output, "ab+") as f:
-                for i in np.arange(len(clone.dorsal_edge)):
-                    f.write('\t'.join([clone.filepath, str(i), str(clone.dorsal_edge[i,0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i])]) + '\n')
-
-        except Exception as e:
-            print "Error writing pedestal to file: " + str(e)
-    except (IOError, AttributeError) as e:
-        print "Can't write data for " + clone.filepath + " to file: " + str(e)
-
-def myParse(params):
-    
-    params_dict = {}
-
-    with open(params) as f:
-        for line in f:
-            if not line.startswith("#"):
-                try:
-                    param_name, param_value = line.split(',') 
-                    try:
-                        params_dict[param_name] = literal_eval(param_value.strip())
-                    except (ValueError, SyntaxError):
-                        params_dict[param_name] = param_value.strip()
-                except ValueError:
-                    pass
-    return params_dict
 
 @click.command()
 @click.option('--params', default='params.txt', help='Path to parameter file.')
@@ -157,6 +65,7 @@ def daphnia(params, images, plot, plot_params):
             "tail_tip",
             "tail_base",
             "tail_spine_length",
+            "tail_dorsal",
             "ventral_mask_endpoints",
             "dorsal_mask_endpoints",
             "anterior_mask_endpoints",
@@ -195,11 +104,11 @@ def daphnia(params, images, plot, plot_params):
             "experimenter",
             "inducer"]
 
-    params_dict = myParse(params)
+    params_dict = utils.myParse(params)
 
     if plot:
         
-        plot_params_dict = myParse(plot_params)
+        plot_params_dict = utils.myParse(plot_params)
     
     if params_dict['load_metadata']:
         
@@ -223,7 +132,7 @@ def daphnia(params, images, plot, plot_params):
         if params_dict['load_metadata']:
             metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
 
-        write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['shape_output'])
+        utils.write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['shape_output'])
 
         if plot:
             clone.filebase = metadata['filebase']

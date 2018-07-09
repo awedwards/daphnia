@@ -1,4 +1,6 @@
+import os
 import cv2
+import utils
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button
@@ -7,21 +9,69 @@ import numpy as np
 from skimage.filters import gaussian
 from clone import Clone
 
-#f = "/Volumes/daphnia/data/full_101956_DBunk_131_juju_1A_RigB_20170726T173118.bmp"
-#f = "/Volumes/daphnia/data/full_101262_DBunk_132_juju1_2A_RigB_20170622T163323.bmp"
-#f = "/Volumes/daphnia/data/full_110928_DBunk_131_ctrl_3B_RigB_20171013T113523.bmp"
-#f = "/Volumes/daphnia/data/full_110773_DBunk_321_ctrl_1B_RigB_20171004T171435.bmp"
+DATA_COLS = ["filepath",
+            "animal_dorsal_area",
+            "eye_area",
+            "animal_length",
+            "animal_x_center",
+            "animal_y_center",
+            "animal_major",
+            "animal_minor",
+            "animal_theta",
+            "eye_x_center",
+            "eye_y_center",
+            "anterior",
+            "posterior",
+            "dorsal",
+            "ventral",
+            "ant_vec",
+            "pos_vec",
+            "dor_vec",
+            "ven_vec",
+            "eye_dorsal",
+            "head",
+            "tail",
+            "tail_tip",
+            "tail_base",
+            "tail_dorsal",
+            "tail_spine_length",
+            "ventral_mask_endpoints",
+            "dorsal_mask_endpoints",
+            "anterior_mask_endpoints",
+            "pedestal_max_height",
+            "pedestal_area",
+            "poly_coeff",
+            "res",
+            "peak",
+            "deyecenter_pedestalmax",
+            "dorsal_residual",
+            "automated_PF",
+            "automated_PF_reason"]
 
-#f = "/Volumes/daphnia/data/full_110887_D8_298_juju_2A_RigA_20171013T110416.bmp"
-#f = "/Volumes/daphnia/data/full_101784_D8_137_ctrl_1A_RigB_20170727T141928.bmp"
-#f = "/Volumes/daphnia/data/full_100871_AD8_29_juju2_1C_RigB_20170615T133402.bmp"
-#f = "/Volumes/daphnia/data/full_110195_D8_213_juju_2B_RigB_20170809T162438.bmp"
-#f = "/Volumes/daphnia/data/full_101855_D8_65_juju_2B_RigA_20170727T123919.bmp"
-
-#f = "/Volumes/daphnia/data/full_100493_D10_A14_juju1_2B_RigA_20170606T151522.bmp"
-f = "/Users/edwardsa/Documents/bergland/good_daphnia_images/image102.png"
-
-clone = Clone(f)
+METADATA_FIELDS = ["filebase",
+            "barcode",
+            "cloneid",
+            "pond",
+            "id",
+            "treatment",
+            "replicate",
+            "rig",
+            "datetime",
+            "inductiondate",
+            "manual_PF",
+            "manual_PF_reason",
+            "manual_PF_curator",
+            "pixel_to_mm",
+            "season",
+            "animal_dorsal_area_mm",
+            "animal_length_mm",
+            "eye_area_mm",
+            "tail_spine_length_mm",
+            "deyecenter_pedestalmax_mm",
+            "pedestal_area_mm",
+            "pedestal_max_height_mm",
+            "experimenter",
+            "inducer"]
 
 class PointFixer:
     
@@ -32,7 +82,7 @@ class PointFixer:
         self.image = im
         self.edges = False
         self.edge_blur = 1.0
-
+        
         self.display = display
         self.clone = clone
 
@@ -52,7 +102,7 @@ class PointFixer:
         
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
-        self.cid = display.figure.canvas.mpl_connect('button_press_event',self)
+        self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
         self.draw() 
     
     def __call__(self, event):
@@ -64,8 +114,9 @@ class PointFixer:
             self.display.scatter(self.selected[1], self.selected[0], c="green")
             self.display.figure.canvas.draw()
         else:
+            
             self.display.clear()
-            self.display.imshow(self.image,cmap="gray")
+            
             self.set_closest_checkpoint(event.ydata, event.xdata)
             self.clone.checkpoints = self.checkpoints
             self.clone.fit_dorsal_edge(self.original_image)
@@ -77,14 +128,15 @@ class PointFixer:
             self.draw()
 
     def reset_button_press(self, event):
-
-        self.display.clear()
         
         if self.edges:
             self.edge_button_press(1)
-
-        params = {}
         
+        if self.clone.flip:
+            self.clone.flip = not self.clone.flip
+
+        self.clone.find_features(self.original_image, **self.params)
+        self.clone.get_orientation_vectors()
         self.clone.find_head(self.original_image, **self.params)
         self.edge_blur = 1.0
         self.clone.dorsal_blur = 1.0
@@ -92,14 +144,14 @@ class PointFixer:
         self.clone.fit_dorsal_edge(self.original_image, **self.params)
         self.clone.find_tail(self.original_image)
         self.clone.remove_tail_spine()
-        self.de = clone.dorsal_edge
+        self.de = self.clone.dorsal_edge
         self.selected = None 
         self.checkpoints = self.clone.checkpoints
+        
         self.draw()
 
     def flip_button_press(self, event):
    
-        self.display.clear()
         self.display.imshow(self.image, cmap="gray")
         params = {}
         self.clone.flip = not self.clone.flip
@@ -111,14 +163,12 @@ class PointFixer:
         self.clone.fit_dorsal_edge(self.original_image, **self.params)
         self.clone.find_tail(self.original_image)
         self.clone.remove_tail_spine()
-        self.de = clone.dorsal_edge
+        self.de = self.clone.dorsal_edge
         self.checkpoints = self.clone.checkpoints 
         self.draw()
 
     def edge_button_press(self, event):
 
-        self.display.clear()
-        
         self.edges = not self.edges
 
         if self.edges:
@@ -141,15 +191,21 @@ class PointFixer:
 
     def draw(self):
         
+        self.display.clear()
+        
         self.display.imshow(self.image, cmap="gray")
         self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
+        
         if self.edges:
             checkpoint_color = "yellow"
         else:
             checkpoint_color = "black"
-
+        
         self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
         self.display.axis('off')
+
+        self.display.set_title(clone.filebase)
+
         self.display.figure.canvas.draw()
 
     def get_closest_checkpoint(self, x, y):
@@ -160,32 +216,113 @@ class PointFixer:
         
         val = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :]
         self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :] = (x, y)
+        
         if self.clone.dist(val,self.clone.head) < 0.0001:
             self.clone.head = (x, y)
         if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
             self.clone.tail_dorsal = (x,y)
 
-fig = plt.figure(figsize=(20,20))
-display = fig.add_subplot(111)
-display.axis('off')
+class Viewer:
 
-obj = PointFixer(clone, display)
+    def __init__(self, clone_list):
+        
+        self.clone_list = clone_list
+        self.curr_idx = 0
+        self.clone = self.clone_list[self.curr_idx]
+        
+        self.fig = plt.figure(figsize=(15,10))
+        self.display = self.fig.add_subplot(111)
+        self.display.axis('off')
 
-axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
-resetbutton = Button(axreset, 'Reset')
-resetbutton.on_clicked(obj.reset_button_press)
+        self.obj = PointFixer(self.clone, self.display)
+        self.populate_figure()
 
-axflip = plt.axes([0.50, 0.01, 0.1, 0.075])
-flipbutton = Button(axflip, 'Flip')
-flipbutton.on_clicked(obj.flip_button_press)
+    def populate_figure(self):
 
-axedges = plt.axes([0.60, 0.01, 0.1, 0.075])
-edgebutton = Button(axedges, 'Toggle Edges')
-edgebutton.on_clicked(obj.edge_button_press)
+        axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
+        self.resetbutton = Button(axreset, 'Reset')
+        self.resetbutton.on_clicked(self.obj.reset_button_press)
 
-axblur = plt.axes([0.20, 0.01, 0.1, 0.075])
-blurslider = Slider(axblur, 'Blur Slider', 0, 3)
-blurslider.set_val(obj.edge_blur)
-blurslider.on_changed(obj.set_blur_slider)
+        axflip = plt.axes([0.50, 0.01, 0.1, 0.075])
+        self.flipbutton = Button(axflip, 'Flip')
+        self.flipbutton.on_clicked(self.obj.flip_button_press)
 
+        axedges = plt.axes([0.60, 0.01, 0.1, 0.075])
+        self.edgebutton = Button(axedges, 'Toggle Edges')
+        self.edgebutton.on_clicked(self.obj.edge_button_press)
+
+        axblur = plt.axes([0.20, 0.01, 0.1, 0.075])
+        self.blurslider = Slider(axblur, 'Blur Slider', 0, 3)
+        self.blurslider.set_val(self.obj.edge_blur)
+        self.blurslider.on_changed(self.obj.set_blur_slider)
+
+        if self.curr_idx+1 < len(self.clone_list):
+            axnext = plt.axes([0.85, 0.01, 0.1, 0.075])
+            self.nextbutton = Button(axnext, 'Next')
+            self.nextbutton.on_clicked(self.next_button_press)
+
+        if self.curr_idx > 0:
+            axprev = plt.axes([0.75, 0.01, 0.1, 0.075])
+            self.prevbutton = Button(axprev, 'Previous')
+            self.prevbutton.on_clicked(self.prev_button_press)
+
+
+    def prev_button_press(self,event):
+
+        self.curr_idx -= 1
+        self.clone = self.clone_list[self.curr_idx]
+        
+        plt.clf()
+        
+        self.display = self.fig.add_subplot(111)
+        self.display.axis('off')
+
+        self.obj = PointFixer(self.clone, self.display)
+        self.populate_figure()
+
+    def next_button_press(self,event):
+
+        self.curr_idx += 1
+        self.clone = self.clone_list[self.curr_idx]
+        
+        plt.clf()
+
+        self.display = self.fig.add_subplot(111)
+        self.display.axis('off')
+
+        self.obj = PointFixer(self.clone, self.display)
+        self.populate_figure()        
+        
+#
+
+gui_params = utils.myParse("gui_params.txt")
+
+file_list = []
+
+print "Reading in image file list"
+with open(gui_params["image_list_filepath"], "rb") as f:
+    line = f.readline().strip()
+    while line:
+        file_list.append(line)
+        line = f.readline().strip()
+
+print "Reading in analysis file"
+df = utils.csv_to_df(gui_params["input_analysis_file"])
+
+clone_list = []
+
+for f in file_list:
+    try:
+        fileparts = f.split("/")
+
+        clone = utils.dfrow_to_clone( df, np.where(df.filebase == fileparts[-1])[0][0] )
+        clone.filepath = f
+        clone_list.append(clone)
+    except Exception:
+        clone_list.append(Clone(f))
+
+
+v = Viewer(clone_list) 
 plt.show()
+
+
