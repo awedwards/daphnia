@@ -220,7 +220,6 @@ class PointFixer:
         
         if self.add_checkpoint:
             self.addcheckbutton.color = "green"
-
         self.display.imshow(self.image, cmap="gray")
         
         if self.show_dorsal_edge:
@@ -368,8 +367,13 @@ class Viewer:
 
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
-
-        self.obj = PointFixer(self.clone, self.display)
+        try:
+            self.obj = PointFixer(self.clone, self.display)
+        except Exception as e:
+            print "Error initializing " + self.clone.filepath + ": " + str(e)
+            
+            if self.curr_idx < len(self.clone_list)-1:
+                self.next_button_press(event)
         self.populate_figure()
 #
 
