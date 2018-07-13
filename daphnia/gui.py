@@ -78,6 +78,9 @@ class PointFixer:
     def __init__(self, clone, display):
         
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
+        if im is None:
+            print "Image not found. Check your image list."
+            raise(IOError)
         self.original_image = im
         self.image = im
         self.edges = False
@@ -99,7 +102,9 @@ class PointFixer:
         self.clone.get_animal_length()
         self.clone.get_animal_dorsal_area()
         self.de = clone.dorsal_edge
-        
+        self.show_dorsal_edge = True
+        self.add_checkpoint = False
+
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
@@ -108,9 +113,18 @@ class PointFixer:
     def __call__(self, event):
         if event.inaxes!=self.display.axes: return
         
-        if (self.selected is None):
-        
-            self.get_closest_checkpoint(event.ydata, event.xdata) 
+        if self.add_checkpoint == True:
+            self.get_closest_checkpoint(event.ydata, event.xdata, n=2)
+            self.insert_new_checkpoint(event.ydata, event.xdata)
+            self.clone.checkpoints = self.checkpoints
+            self.fit_dorsal()
+            self.add_checkpoint = False
+            self.selected = None
+            self.draw()
+
+        elif (self.selected is None):
+            
+            self.get_closest_checkpoint(event.ydata, event.xdata)
             self.display.scatter(self.selected[1], self.selected[0], c="green")
             self.display.figure.canvas.draw()
         else:
@@ -119,13 +133,17 @@ class PointFixer:
             
             self.set_closest_checkpoint(event.ydata, event.xdata)
             self.clone.checkpoints = self.checkpoints
-            self.clone.fit_dorsal_edge(self.original_image)
-            self.clone.remove_tail_spine()
-            self.de = self.clone.dorsal_edge
-            self.checkpoints = self.clone.checkpoints
+            self.fit_dorsal()
             self.selected = None
             
             self.draw()
+    
+    def fit_dorsal(self):
+
+        self.clone.fit_dorsal_edge(self.original_image)
+        self.clone.remove_tail_spine()
+        self.de = self.clone.dorsal_edge
+        self.checkpoints = self.clone.checkpoints
 
     def reset_button_press(self, event):
         
@@ -193,27 +211,37 @@ class PointFixer:
         
         self.display.clear()
         
+        axaddcheck = plt.axes([0.025, 0.085, 0.1, 0.075])
+        self.addcheckbutton = Button(axaddcheck, 'Add Checkpoint')
+        self.addcheckbutton.color = "gray"
+        self.addcheckbutton.on_clicked(self.add_checkpoint_button_press) 
+        
+        if self.add_checkpoint:
+            self.addcheckbutton.color = "green"
+
         self.display.imshow(self.image, cmap="gray")
-        self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
         
-        if self.edges:
-            checkpoint_color = "yellow"
-        else:
-            checkpoint_color = "black"
+        if self.show_dorsal_edge:
+            
+            self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
+            if self.edges:
+                checkpoint_color = "yellow"
+            else:
+                checkpoint_color = "black"
+            
+            self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
         
-        self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
         self.display.axis('off')
-
-        self.display.set_title(clone.filebase)
-
+        self.display.set_title(self.clone.filebase)
         self.display.figure.canvas.draw()
 
-    def get_closest_checkpoint(self, x, y):
+    def get_closest_checkpoint(self, x, y, n=1):
 
-        self.selected = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints-(x,y), axis=1)), :]
-    
+        self.selected = self.checkpoints[np.argsort(np.linalg.norm(self.checkpoints-(x,y), axis=1))[0:n], :]
+        if n==1:
+            self.selected = self.selected[0]
+
     def set_closest_checkpoint(self, x, y):
-        
         val = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :]
         self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :] = (x, y)
         
@@ -221,6 +249,45 @@ class PointFixer:
             self.clone.head = (x, y)
         if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
             self.clone.tail_dorsal = (x,y)
+    
+    def insert_new_checkpoint(self, x, y):
+        
+        idx1 = np.argwhere(self.checkpoints == self.selected[0])[0][0]
+        idx2 = np.argwhere(self.checkpoints == self.selected[1])[0][0]
+        
+        x = int(x)
+        y = int(y)
+        
+        if (np.min([idx1, idx2]) == 0) and (np.dot(self.checkpoints[0,:] - np.array((x,y)), self.checkpoints[1,:] - np.array((x,y))) > 0):
+                self.checkpoints = np.vstack([(x,y), self.checkpoints])
+                self.clone.head = (x, y)
+        elif (np.max([idx1, idx2]) == len(self.checkpoints)-1) and (np.dot(self.checkpoints[-1,:] - np.array((x,y)), self.checkpoints[-2,:] - np.array((x,y))) > 0):
+                self.checkpoints = np.vstack([self.checkpoints, (x,y)])
+                print self.clone.tail_dorsal, (x,y)
+                self.clone.tail_dorsal = np.array((x, y))
+
+                print self.clone.tail_dorsal, (x,y)
+        else:
+            self.checkpoints = np.vstack([self.checkpoints[0:np.min([idx1, idx2])+1,:], (x, y), self.checkpoints[np.max([idx1, idx2]):]])
+
+    def delete_selected_checkpoint(self, event):
+
+        if self.selected is not None:
+            self.checkpoints = np.delete(self.checkpoints, np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), axis=0)
+            self.clone.checkpoints = self.checkpoints
+            self.fit_dorsal()
+            self.selected = None
+            self.draw()
+
+    def toggle_dorsal_button_press(self, event):
+
+        self.show_dorsal_edge = not self.show_dorsal_edge
+        self.draw()
+
+    def add_checkpoint_button_press(self, event):
+        
+        self.add_checkpoint = not self.add_checkpoint
+        self.draw()
 
 class Viewer:
 
@@ -236,6 +303,8 @@ class Viewer:
 
         self.obj = PointFixer(self.clone, self.display)
         self.populate_figure()
+
+        self.add_checkpoint = False
 
     def populate_figure(self):
 
@@ -256,13 +325,24 @@ class Viewer:
         self.blurslider.set_val(self.obj.edge_blur)
         self.blurslider.on_changed(self.obj.set_blur_slider)
 
+        axtogdorsal = plt.axes([0.70, 0.01, 0.1, 0.075])
+        self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit')
+        self.togdorsalbutton.on_clicked(self.obj.toggle_dorsal_button_press)
+        
+        axdel = plt.axes([0.025, 0.01, 0.1, 0.075])
+        self.delcheckbutton = Button(axdel, 'Delete Checkpoint')
+        self.delcheckbutton.on_clicked(self.obj.delete_selected_checkpoint)
+        
+        axsave = plt.axes([0.875, 0.8, 0.1, 0.075])
+        self.savebutton = Button(axsave, 'Save')
+        
         if self.curr_idx+1 < len(self.clone_list):
-            axnext = plt.axes([0.85, 0.01, 0.1, 0.075])
+            axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
             self.nextbutton = Button(axnext, 'Next')
             self.nextbutton.on_clicked(self.next_button_press)
 
         if self.curr_idx > 0:
-            axprev = plt.axes([0.75, 0.01, 0.1, 0.075])
+            axprev = plt.axes([0.875, 0.085, 0.1, 0.075])
             self.prevbutton = Button(axprev, 'Previous')
             self.prevbutton.on_clicked(self.prev_button_press)
 
@@ -291,8 +371,7 @@ class Viewer:
         self.display.axis('off')
 
         self.obj = PointFixer(self.clone, self.display)
-        self.populate_figure()        
-        
+        self.populate_figure()
 #
 
 gui_params = utils.myParse("gui_params.txt")
@@ -321,8 +400,9 @@ for f in file_list:
     except Exception:
         clone_list.append(Clone(f))
 
-
 v = Viewer(clone_list) 
 plt.show()
 
 
+#metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
+#utils.write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, gui_params['output_analysis_file'], gui_params['output_shape_file'])

@@ -603,7 +603,6 @@ class Clone(object):
         self.dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, self.tail_dorsal, self.tail_tip)])    
 
     def remove_tail_spine(self):
-        
         self.dorsal_edge = self.dorsal_edge[0:np.argmin(np.linalg.norm(self.dorsal_edge - self.tail_dorsal, axis=1)), :]
         self.dorsal_edge = self.interpolate(self.dorsal_edge)
         self.checkpoints[-1,:] = self.dorsal_edge[-1,:]

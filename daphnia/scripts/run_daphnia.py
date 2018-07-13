@@ -132,7 +132,7 @@ def daphnia(params, images, plot, plot_params):
         if params_dict['load_metadata']:
             metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
 
-        utils.write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, params_dict['output'], params_dict['shape_output'])
+        utils.write_clone(clone, DATA_COLS, metadata.keys(), metadata, params_dict['output'], params_dict['shape_output'])
 
         if plot:
             clone.filebase = metadata['filebase']
