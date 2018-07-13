@@ -2,12 +2,14 @@ import os
 import cv2
 import utils
 import matplotlib as mpl
+mpl.use('TKAgg')
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button
-from matplotlib.widgets import Slider
+from matplotlib.widgets import Button, Slider, TextBox
 import numpy as np
 from skimage.filters import gaussian
 from clone import Clone
+
+print mpl.get_backend()
 
 DATA_COLS = ["filepath",
             "animal_dorsal_area",
@@ -197,9 +199,9 @@ class PointFixer:
             self.image = self.original_image
             self.draw()
     
-    def set_blur_slider(self, event):
+    def set_edge_blur(self, text):
         
-        self.edge_blur = event
+        self.edge_blur = float(text)
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.edges = False
@@ -232,7 +234,7 @@ class PointFixer:
             self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
         
         self.display.axis('off')
-        self.display.set_title(self.clone.filebase)
+        self.display.set_title(self.clone.filepath)
         self.display.figure.canvas.draw()
 
     def get_closest_checkpoint(self, x, y, n=1):
@@ -263,10 +265,8 @@ class PointFixer:
                 self.clone.head = (x, y)
         elif (np.max([idx1, idx2]) == len(self.checkpoints)-1) and (np.dot(self.checkpoints[-1,:] - np.array((x,y)), self.checkpoints[-2,:] - np.array((x,y))) > 0):
                 self.checkpoints = np.vstack([self.checkpoints, (x,y)])
-                print self.clone.tail_dorsal, (x,y)
                 self.clone.tail_dorsal = np.array((x, y))
 
-                print self.clone.tail_dorsal, (x,y)
         else:
             self.checkpoints = np.vstack([self.checkpoints[0:np.min([idx1, idx2])+1,:], (x, y), self.checkpoints[np.max([idx1, idx2]):]])
 
@@ -321,9 +321,8 @@ class Viewer:
         self.edgebutton.on_clicked(self.obj.edge_button_press)
 
         axblur = plt.axes([0.20, 0.01, 0.1, 0.075])
-        self.blurslider = Slider(axblur, 'Blur Slider', 0, 3)
-        self.blurslider.set_val(self.obj.edge_blur)
-        self.blurslider.on_changed(self.obj.set_blur_slider)
+        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev', initial=str(self.obj.edge_blur))
+        self.blurtextbox.on_submit(self.obj.set_edge_blur)
 
         axtogdorsal = plt.axes([0.70, 0.01, 0.1, 0.075])
         self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit')
