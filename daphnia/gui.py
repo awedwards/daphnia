@@ -159,6 +159,7 @@ class PointFixer:
         self.clone.get_orientation_vectors()
         self.clone.find_head(self.original_image, **self.params)
         self.edge_blur = 1.0
+        self.blurtextbox.set_val('1.0')
         self.clone.dorsal_blur = 1.0
         self.clone.initialize_dorsal_edge(self.original_image, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, **self.params)
@@ -201,6 +202,7 @@ class PointFixer:
     
     def set_edge_blur(self, text):
         
+        print self.edge_blur
         self.edge_blur = float(text)
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
@@ -216,12 +218,16 @@ class PointFixer:
         axaddcheck = plt.axes([0.025, 0.085, 0.1, 0.075])
         self.addcheckbutton = Button(axaddcheck, 'Add Checkpoint')
         self.addcheckbutton.color = "gray"
-        self.addcheckbutton.on_clicked(self.add_checkpoint_button_press) 
-        
+        self.addcheckbutton.on_clicked(self.add_checkpoint_button_press)
+
         if self.add_checkpoint:
             self.addcheckbutton.color = "green"
         self.display.imshow(self.image, cmap="gray")
         
+        axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
+        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev', initial=str(self.edge_blur))
+        self.blurtextbox.on_submit(self.set_edge_blur)
+ 
         if self.show_dorsal_edge:
             
             self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
@@ -318,10 +324,6 @@ class Viewer:
         axedges = plt.axes([0.60, 0.01, 0.1, 0.075])
         self.edgebutton = Button(axedges, 'Toggle Edges')
         self.edgebutton.on_clicked(self.obj.edge_button_press)
-
-        axblur = plt.axes([0.20, 0.01, 0.1, 0.075])
-        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev', initial=str(self.obj.edge_blur))
-        self.blurtextbox.on_submit(self.obj.set_edge_blur)
 
         axtogdorsal = plt.axes([0.70, 0.01, 0.1, 0.075])
         self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit')
