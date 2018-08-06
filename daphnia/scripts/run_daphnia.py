@@ -7,22 +7,22 @@ from ast import literal_eval
 import daphnia.utils as utils
 import numpy as np
 
-def analyze_clone(clone, im, params):
+def analyze_clone(clone, im):
 
     try:
         print "Detecting eye"
-        clone.find_eye(im, **params)
+        clone.find_eye(im)
         print "Masking antenna"
-        clone.find_features(im, **params)
+        clone.find_features(im)
         print "Estimating area"
         clone.get_orientation_vectors()
         clone.eye_vertices()
 
-        clone.find_head(self.image, **self.params)
-        self.clone.initialize_dorsal_edge(self.image, **self.params)
-        self.clone.fit_dorsal_edge(self.image, **self.params)
-        self.clone.find_tail(self.image)
-        self.clone.remove_tail_spine()
+        clone.find_head(im)
+        clone.initialize_dorsal_edge(im)
+        clone.fit_dorsal_edge(im)
+        clone.find_tail(im)
+        clone.remove_tail_spine()
 
         clone.get_animal_length()
         clone.get_animal_dorsal_area()
@@ -125,15 +125,15 @@ def daphnia(params, images, plot, plot_params):
         
         click.echo('Analyzing {0}'.format(image_filepath))
         
-        clone = Clone(image_filepath)
+        clone = Clone(image_filepath, **params_dict)
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
-        analyze_clone(clone, im, params_dict)
+        analyze_clone(clone, im)
         
         if params_dict['load_metadata']:
             metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
 
         utils.write_clone(clone, DATA_COLS, metadata.keys(), metadata, params_dict['output'], params_dict['shape_output'])
-
+        utils.write_analysis_metadata(clone, params_dict, params['analysis_metadata_output'])
         if plot:
             clone.filebase = metadata['filebase']
             daphnia_plot(clone, im, plot_params_dict)
