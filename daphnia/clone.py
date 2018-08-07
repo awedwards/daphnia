@@ -12,7 +12,6 @@ import random
 class Clone(object):
     
     def __init__(self, filepath, **kwargs):
-        
         self.filepath = filepath
 
         self.animal_area = np.nan
@@ -86,33 +85,33 @@ class Clone(object):
         self.analyzed = False
         
         # parameters passed in
-        self.count_animal_pixels_blur=count_animal_pixels_blur
-        self.count_animal_pixels_n=count_animal_pixels_n
-        self.count_animal_pixels_cc_threshold=count_animal_pixels_cc_threshold
+        self.count_animal_pixels_blur = kwargs['count_animal_pixels_blur']
+        self.count_animal_pixels_n = kwargs['count_animal_pixels_n']
+        self.count_animal_pixels_cc_threshold = kwargs['count_animal_pixels_cc_threshold']
         
-        self.canny_minval=canny_minval
-        self.canny_maxval=canny_maxval
+        self.canny_minval = kwargs['canny_minval']
+        self.canny_maxval = kwargs['canny_maxval']
 
-        self.find_eye_blur = find_eye_blur
+        self.find_eye_blur = kwargs['find_eye_blur']
     
-        self.mask_antenna_blur=mask_antenna_blur,
-        self.edge_pixel_distance_threshold_multiplier=edge_pixel_distance_threshold_multiplier
-        self.mask_antenna_coronal_tilt=mask_antenna_coronal_tilt
-        self.mask_antenna_anterior_tilt=mask_antenna_anterior_tilt
-        self.mask_antenna_posterior_tilt=mask_antenna_posterior_tilt
+        self.mask_antenna_blur = kwargs['mask_antenna_blur']
+        self.edge_pixel_distance_threshold_multiplier = kwargs['edge_pixel_distance_threshold_multiplier']
+        self.mask_antenna_coronal_tilt = kwargs['mask_antenna_coronal_tilt']
+        self.mask_antenna_anterior_tilt = kwargs['mask_antenna_anterior_tilt']
+        self.mask_antenna_posterior_tilt = kwargs['mask_antenna_posterior_tilt']
 
-        self.fit_ellipse_chi2 = fit_ellipse_chi2
+        self.fit_ellipse_chi2 = kwargs['fit_ellipse_chi2']
 
-        self.find_head_blur = find_head_blur
+        self.find_head_blur = kwargs['find_head_blur']
 
-        self.find_tail_blur = find_tail_blur
+        self.find_tail_blur = kwargs['find_tail_blur']
 
-        self.dorsal_edge_blur = dorsal_edge_blur
+        self.dorsal_edge_blur = kwargs['dorsal_edge_blur']
         
-        self.analyze_pedestal_moving_avg_window=analyze_pedestal_moving_avg_window
-        self.analyze_pedestal_percentile=analyze_pedestal_percentile
-        self.analyze_pedestal_polyfit_degree=analyze_pedestal_polyfit_degree
-        self.pedestal_n=pedestal_n
+        self.analyze_pedestal_moving_avg_window = kwargs['analyze_pedestal_moving_avg_window']
+        self.analyze_pedestal_percentile = kwargs['analyze_pedestal_percentile']
+        self.analyze_pedestal_polyfit_degree = kwargs['analyze_pedestal_polyfit_degree']
+        self.pedestal_n = kwargs['pedestal_n']
 
     def dist(self,x,y):
 
@@ -200,7 +199,8 @@ class Clone(object):
             self.eye_x_center, self.eye_y_center = np.mean(np.array(eye), axis=0)
             self.eye_area = count
         except (TypeError, IndexError):
-            self.find_eye(im, self.find_eye_blur=self.find_eye_blur+0.25)
+            self.find_eye_blur+=0.25
+            self.find_eye(im)
         
 
     def count_animal_pixels(self, im):
@@ -308,6 +308,9 @@ class Clone(object):
 
         hc = self.high_contrast(im)
 
+        print self.mask_antenna_blur
+        print self.canny_minval
+        print self.canny_maxval
         edge_image = cv2.Canny(np.array(255*gaussian(hc, self.mask_antenna_blur), dtype=np.uint8),self.canny_minval,self.canny_maxval)/255
         edge_copy = edge_image.copy()
 
@@ -380,7 +383,7 @@ class Clone(object):
         self.ventral = self.dorsal
         self.dorsal = tmp
 
-    def mask_antenna(self, edge, center):
+    def mask_antenna(self, edge, center, **kwargs):
         
         cx, cy = center
 

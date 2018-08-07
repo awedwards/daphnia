@@ -656,6 +656,15 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
 
 def write_analysis_metadata(clone, params_dict, metadata_output_file):
     
+    params_key_list = [] 
+    params_val_list = []
+
+    for k in params_dict.keys():
+       try:
+           params_val_list.append(str(getattr(clone,k)))
+           params_key_list.append(k)
+       except AttributeError:
+           continue
     try:
         if (os.stat(metadata_output_file).st_size == 0):
             raise OSError
@@ -664,17 +673,12 @@ def write_analysis_metadata(clone, params_dict, metadata_output_file):
 
         try:
             with open(metadata_output_file, "wb+") as f:
-                f.write( "\t".join(params_dict.keys()) + "\n")
+                f.write( "\t".join(params_key_list) + "\n")
         except IOError:
             print "Can't find desired location for saving analysis metadata"
     
-    params_list = []
-
-    for k in params_dict.keys(): 
-        params_list.append(getattr(clone,k))
-
     try:
         with open(metadata_output_file, "ab+") as f:
-            f.write('\t'.join(params_list))
+            f.write("\t".join(params_val_list)+"\n")
     except Exception as e:
         print "Error writing analysis metadata to file: " + str(e)

@@ -124,7 +124,6 @@ def daphnia(params, images, plot, plot_params):
     for image_filepath in images:
         
         click.echo('Analyzing {0}'.format(image_filepath))
-        
         clone = Clone(image_filepath, **params_dict)
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
         analyze_clone(clone, im)
@@ -133,7 +132,7 @@ def daphnia(params, images, plot, plot_params):
             metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
 
         utils.write_clone(clone, DATA_COLS, metadata.keys(), metadata, params_dict['output'], params_dict['shape_output'])
-        utils.write_analysis_metadata(clone, params_dict, params['analysis_metadata_output'])
+        utils.write_analysis_metadata(clone, params_dict, params_dict['analysis_metadata_output'])
         if plot:
             clone.filebase = metadata['filebase']
             daphnia_plot(clone, im, plot_params_dict)
