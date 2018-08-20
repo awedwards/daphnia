@@ -1,6 +1,9 @@
 image_list_filepath, /Users/edwardsa/Documents/bergland/daphnia/gui_image_list.txt
-input_analysis_file,/Users/edwardsa/Documents/bergland/daphnia_output.txt
-output_analysis_file,/Users/edwardsa/Documents/bergland/daphnia_output_2.txt
 
-#input_shape_file,/mnt/spicy_4/daphnia/analysis/analysis_results/shape_output.txt
-#output_shape_file,/mnt/spicy_4/daphnia/analysis_analysis_results/shape_output.txt
+input_analysis_file,/Users/edwardsa/Documents/bergland/daphnia_output.txt
+output_analysis_file,/Users/edwardsa/Documents/bergland/daphnia_output_20180809.txt
+
+input_shape_file,/Users/edwardsa/Documents/bergland/shape_output.txt
+output_shape_file,/Users/edwardsa/Documents/bergland/shape_output_20180809.txt
+
+input_analysis_metadata_file,/mnt/spicy_4/daphnia/analysis_results/

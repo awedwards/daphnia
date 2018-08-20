@@ -30,3 +30,5 @@ analyze_pedestal_percentile, 80
 analyze_pedestal_polyfit_degree, 3
 output, daphnia_output.txt
 shape_output, shape_output.txt
+analysis_metadata_output, analysis_metadata_output.txt
+pedestal_n,700
