@@ -6,10 +6,9 @@ mpl.use('TKAgg')
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Button, Slider, TextBox
 import numpy as np
+import pandas as pd
 from skimage.filters import gaussian
 from clone import Clone
-
-print mpl.get_backend()
 
 DATA_COLS = ["filepath",
             "animal_dorsal_area",
@@ -48,7 +47,9 @@ DATA_COLS = ["filepath",
             "deyecenter_pedestalmax",
             "dorsal_residual",
             "automated_PF",
-            "automated_PF_reason"]
+            "automated_PF_reason",
+            "modified"]
+
 
 METADATA_FIELDS = ["filebase",
             "barcode",
@@ -75,6 +76,26 @@ METADATA_FIELDS = ["filebase",
             "experimenter",
             "inducer"]
 
+ANALYSIS_METADATA_FIELDS = ["edge_pixel_distance_threshold_multiplier",
+            "count_animal_pixels_cc_threshold",
+            "mask_antenna_posterior_tilt",
+            "mask_antenna_anterior_tilt",
+            "pedestal_n",
+            "mask_antenna_blur",
+            "analyze_pedestal_percentile",
+            "canny_maxval",
+            "count_animal_pixels_blur",
+            "mask_antenna_coronal_tilt",
+            "find_head_blur",
+            "count_animal_pixels_n",
+            "fit_ellipse_chi2",
+            "analyze_pedestal_polyfit_degree",
+            "analyze_pedestal_moving_avg_window",
+            "dorsal_edge_blur",
+            "canny_minval",
+            "find_tail_blur",
+            "find_eye_blur"]
+
 class PointFixer:
     
     def __init__(self, clone, display):
@@ -92,6 +113,7 @@ class PointFixer:
         self.clone = clone
 
         self.params = {}
+        """
         self.clone.find_eye(self.image, **self.params)
         self.clone.find_features(self.image, **self.params)
         self.clone.get_orientation_vectors()
@@ -103,10 +125,12 @@ class PointFixer:
         self.clone.remove_tail_spine()
         self.clone.get_animal_length()
         self.clone.get_animal_dorsal_area()
+        """
         self.de = clone.dorsal_edge
+        
         self.show_dorsal_edge = True
         self.add_checkpoint = False
-
+        
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
@@ -202,7 +226,6 @@ class PointFixer:
     
     def set_edge_blur(self, text):
         
-        print self.edge_blur
         self.edge_blur = float(text)
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
@@ -296,9 +319,68 @@ class PointFixer:
 
 class Viewer:
 
-    def __init__(self, clone_list):
+    def __init__(self, params):
+
+        self.curation_data = utils.load_manual_curation(params['curation_csvpath'])
+        self.males_list = utils.load_male_list(params['male_listpath'])
+        self.induction_dates = utils.load_induction_data(params['induction_csvpath'])
+        self.season_data = utils.load_pond_season_data(params['pond_season_csvpath'])
+        self.early_release = utils.load_release_data(params['early_release_csvpath'])
+        self.late_release = utils.load_release_data(params['late_release_csvpath'])
+        self.duplicate_data = utils.load_duplicate_data(params['duplicate_csvpath'])
+        self.experimenter_data, self.inducer_data = utils.load_experimenter_data(params['experimenter_csvpath'])
         
+        self.params = params
+        
+        file_list = []
+        metadata_list = []
+        print "Reading in image file list"
+
+
+        with open(self.params["image_list_filepath"], "rb") as f:
+            line = f.readline().strip()
+            while line:
+                file_list.append(line)
+                line = f.readline().strip()
+
+        print "Reading in analysis file"
+        self.data = utils.csv_to_df(self.params["input_analysis_file"])
+        self.data = self.data.assign(save=pd.Series([0]*len(self.data.filebase)), index=self.data.index)
+        
+        print "Reading shape data" 
+        self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
+        clone_list = []
+        metadata = {}
+
+        for f in file_list:
+            try:
+                fileparts = f.split("/")
+                clone = utils.dfrow_to_clone(self.data, np.where(df.filebase == fileparts[-1])[0][0] )
+                clone.filepath = f
+                clone_list.append(clone)
+                metadata[clone.filepath] = utils.build_metadata_dict(clone.filepath,
+                    self.curation_data,
+                    self.males_list,
+                    self.induction_dates,
+                    self.season_data,
+                    self.early_release,
+                    self.late_release,
+                    self.duplicate_data,
+                    self.experimenter_data,
+                    self.inducer_data)
+
+            except Exception:
+                clone_list.append(Clone(f,**self.params))
+        
+        for i in xrange(len(clone_list)):
+            
+            clone_list[i].dorsal_edge = np.vstack(self.shape_data.loc[clone_list[i].filepath].x, self.shape_data.loc[clone_list[i].filepath].y)
+            clone_list[i].q = self.shape_data.loc[clone_list[i].filepath].q
+            clone_list[i].qi = self.shape_data.loc[clone_list[i].filepath].qi
+
         self.clone_list = clone_list
+        self.metadata = metadata
+
         self.curr_idx = 0
         self.clone = self.clone_list[self.curr_idx]
         
@@ -335,7 +417,8 @@ class Viewer:
         
         axsave = plt.axes([0.875, 0.8, 0.1, 0.075])
         self.savebutton = Button(axsave, 'Save')
-        
+        self.savebutton.on_clicked(self.save)
+
         if self.curr_idx+1 < len(self.clone_list):
             axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
             self.nextbutton = Button(axnext, 'Next')
@@ -349,6 +432,8 @@ class Viewer:
 
     def prev_button_press(self,event):
 
+        self.clone_list[self.curr_idx] = self.obj.clone
+
         self.curr_idx -= 1
         self.clone = self.clone_list[self.curr_idx]
         
@@ -361,6 +446,8 @@ class Viewer:
         self.populate_figure()
 
     def next_button_press(self,event):
+
+        self.clone_list[self.curr_idx] = self.obj.clone
 
         self.curr_idx += 1
         self.clone = self.clone_list[self.curr_idx]
@@ -377,37 +464,27 @@ class Viewer:
             if self.curr_idx < len(self.clone_list)-1:
                 self.next_button_press(event)
         self.populate_figure()
+
+    def save(self, event):
+
+        self.clone_list[self.curr_idx] = self.obj.clone
+
+        with open(self.params["input_analysis_file"],"rb") as analysis_file_in, open(self.params["output_analysis_file"],"wb") as analysis_file_out:
+            
+            line = analysis_file_in.readline()
+
+            while line:
+                for clone in self.clone_list:
+                    if (line.split("\t")[0] == clone.filepath):
+                        analysis_file_out.write(clone_to_line(clone, DATA_COLS, METADATA_FIELDS, self.metadata[clone.filepath]))
+                else:
+                    analysis_file_out.write(line)
+
+                line = analysis_file_in.readline()
+
 #
-
 gui_params = utils.myParse("gui_params.txt")
+gui_params.update(utils.myParse("params.txt"))
 
-file_list = []
-
-print "Reading in image file list"
-with open(gui_params["image_list_filepath"], "rb") as f:
-    line = f.readline().strip()
-    while line:
-        file_list.append(line)
-        line = f.readline().strip()
-
-print "Reading in analysis file"
-df = utils.csv_to_df(gui_params["input_analysis_file"])
-
-clone_list = []
-
-for f in file_list:
-    try:
-        fileparts = f.split("/")
-
-        clone = utils.dfrow_to_clone( df, np.where(df.filebase == fileparts[-1])[0][0] )
-        clone.filepath = f
-        clone_list.append(clone)
-    except Exception:
-        clone_list.append(Clone(f))
-
-v = Viewer(clone_list) 
+v = Viewer(gui_params) 
 plt.show()
-
-
-#metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
-#utils.write_clone(clone, DATA_COLS, METADATA_FIELDS, metadata, gui_params['output_analysis_file'], gui_params['output_shape_file'])

@@ -583,6 +583,40 @@ def myParse(params):
                     pass
     return params_dict
 
+def clone_to_line(clone, cols, metadata_fields, metadata):
+
+    tmpdata = []
+    for mf in metadata_fields:
+        try:
+            if mf == "animal_dorsal_area_mm":
+                val = getattr(clone, "animal_dorsal_area")/np.power(metadata["pixel_to_mm"], 2)
+            elif mf == "eye_area_mm":
+                val = getattr(clone, "eye_area")/np.power(metadata["pixel_to_mm"], 2)
+            elif mf == "animal_length_mm":
+                val = getattr(clone, "animal_length")/metadata["pixel_to_mm"]
+            elif mf == "tail_spine_length_mm":
+                val = getattr(clone, "tail_spine_length")/metadata["pixel_to_mm"]
+            elif mf == "pedestal_area_mm":
+                val = getattr(clone, "pedestal_area")/np.power(metadata["pixel_to_mm"], 2)
+            elif mf == "pedestal_max_height_mm":
+                val = getattr(clone, "pedestal_max_height")/metadata["pixel_to_mm"]
+            elif mf == "deyecenter_pedestalmax_mm":
+                val = getattr(clone, "deyecenter_pedestalmax")/metadata["pixel_to_mm"]
+            else:
+                val = metadata[mf]
+
+        except Exception:
+            val = "nan"
+
+    for c in cols:
+        val = str(getattr(clone, c))
+        if val is not None:
+            tmpdata.append(val)
+        else:
+            tmpdata.append("nan")
+        
+    return "\t".join(tmpdata)
+
 def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
 
     try:
@@ -653,6 +687,10 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
 
     except (IOError, AttributeError) as e:
         print "Can't write data for " + clone.filepath + " to file: " + str(e)
+
+def read_shape_long( shape_file ):
+    
+    return pd.read_csv( shape_file, dtype={'filepath':str, 'i':float, 'x':float, 'y':float, 'qi':float, 'q':float},sep="\t")
 
 def write_analysis_metadata(clone, params_dict, metadata_output_file):
     
