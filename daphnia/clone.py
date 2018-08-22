@@ -309,9 +309,6 @@ class Clone(object):
 
         hc = self.high_contrast(im)
 
-        print self.mask_antenna_blur
-        print self.canny_minval
-        print self.canny_maxval
         edge_image = cv2.Canny(np.array(255*gaussian(hc, self.mask_antenna_blur), dtype=np.uint8),self.canny_minval,self.canny_maxval)/255
         edge_copy = edge_image.copy()
 
@@ -610,7 +607,16 @@ class Clone(object):
 
         self.prune_checkpoints()
         checkpoints = self.checkpoints
+        
+        # for some reason, calling traverse_dorsal_edge in reverse on the head portion works better
         dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[1]), np.array(checkpoints[0]))[::-1]
+        
+        # traverse_dorsal_edge prunes the target checkpoint from the list (so there aren't duplicates in the final list),
+        # but since traverse_dorsal_edge is being called in reverse for the head portion, we want to prune the starting
+        # point and add the target instead
+        dorsal_edge = np.vstack((np.array(checkpoints[0]), dorsal_edge))
+        dorsal_edge = dorsal_edge[:-1,:] 
+        
         m,b = self.line_fit(checkpoints[int(0.5*len(checkpoints))], self.tail_dorsal)    
 
         for k in np.arange(1,len(checkpoints)-1):
@@ -749,9 +755,10 @@ class Clone(object):
             
             except ValueError:
                 window += 1
-
-        if not (list(target) in dorsal_edge):
-            dorsal_edge.append(list(target))
+        if (list(target) in dorsal_edge):
+            dorsal_edge.remove(list(target))
+        #if not (list(target) in dorsal_edge):
+        #    dorsal_edge.append(list(target))
 
         return dorsal_edge
     
