@@ -19,11 +19,6 @@ def load_pkl(name, path):
     with open(os.path.join(path,name) + '.pkl','rb') as f:
         return pickle.load(f)
 
-def merge_channels(im,channel1,channel2):
-    copy = im[:,:,channel1].copy()
-    copy[np.where(im[:,:,channel2])] = 1
-    return copy
-
 def parsePond(s):
     
     # this method parses clone ids and finds pond name and id
@@ -266,7 +261,7 @@ def build_clonelist(datadir, analysisdir, inductiondatadir, pondseasondir, ext="
     return clones
 
 def csv_to_df(csvfile, sep="\t"):
-    
+   
     try:
         return pd.read_csv(csvfile, sep=sep)
     except Exception as e:
@@ -305,19 +300,19 @@ def df_to_clonelist(df, datadir = None):
     
     return clones
 
-def dfrow_to_clone(df, irow, datadir = None):
+def dfrow_to_clone(df, irow, params, datadir = None):
     
     row = df.iloc[irow]
-    clone = Clone(row['filepath'])
+    clone = Clone(row['filepath'], **params)
 
     for k,v in row.iteritems():           
-        try:
-            setattr(clone, k, literal_eval(v))
+        try:    
+            setattr(clone, k, literal_eval(str(v)))
         except (ValueError, SyntaxError):
             setattr(clone, k, v)
     
     return clone
-    
+
 def update_clone_list(clones, loadedclones):
 
      for barcode in loadedclones.iterkeys():

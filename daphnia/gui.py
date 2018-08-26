@@ -99,11 +99,12 @@ ANALYSIS_METADATA_FIELDS = ["edge_pixel_distance_threshold_multiplier",
 class PointFixer:
     
     def __init__(self, clone, display):
-        
+        print "Reading image"
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
         if im is None:
-            print "Image not found. Check your image list."
+            print "Image " + clone.filepath + " not found. Check your image list."
             raise(IOError)
+        print "Drawing"
         self.original_image = im
         self.image = im
         self.edges = False
@@ -111,21 +112,8 @@ class PointFixer:
         
         self.display = display
         self.clone = clone
-
+        self.clone.tail_dorsal = np.asarray(self.clone.tail_dorsal, dtype=float)
         self.params = {}
-        """
-        self.clone.find_eye(self.image, **self.params)
-        self.clone.find_features(self.image, **self.params)
-        self.clone.get_orientation_vectors()
-        self.clone.eye_vertices()
-        self.clone.find_head(self.image, **self.params)
-        self.clone.initialize_dorsal_edge(self.image, **self.params)
-        self.clone.fit_dorsal_edge(self.image, **self.params)
-        self.clone.find_tail(self.image)
-        self.clone.remove_tail_spine()
-        self.clone.get_animal_length()
-        self.clone.get_animal_dorsal_area()
-        """
         self.de = clone.dorsal_edge
         
         self.show_dorsal_edge = True
@@ -252,15 +240,21 @@ class PointFixer:
         self.blurtextbox.on_submit(self.set_edge_blur)
  
         if self.show_dorsal_edge:
-            
-            self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
+            try:
+                self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
+            except TypeError:
+                pass
+
             if self.edges:
                 checkpoint_color = "yellow"
             else:
                 checkpoint_color = "black"
             
-            self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
-        
+            try:
+                self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
+            except TypeError:
+                pass
+
         self.display.axis('off')
         self.display.set_title(self.clone.filepath)
         self.display.figure.canvas.draw()
@@ -344,42 +338,38 @@ class Viewer:
                 line = f.readline().strip()
 
         print "Reading in analysis file"
+
         self.data = utils.csv_to_df(self.params["input_analysis_file"])
         self.data = self.data.assign(save=pd.Series([0]*len(self.data.filebase)), index=self.data.index)
-        
-        print "Reading shape data" 
+
+        print "Reading shape data"
         self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
         clone_list = []
-        metadata = {}
+        #metadata = {}
 
         for f in file_list:
             try:
                 fileparts = f.split("/")
-                clone = utils.dfrow_to_clone(self.data, np.where(df.filebase == fileparts[-1])[0][0] )
+                clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
                 clone.filepath = f
                 clone_list.append(clone)
-                metadata[clone.filepath] = utils.build_metadata_dict(clone.filepath,
-                    self.curation_data,
-                    self.males_list,
-                    self.induction_dates,
-                    self.season_data,
-                    self.early_release,
-                    self.late_release,
-                    self.duplicate_data,
-                    self.experimenter_data,
-                    self.inducer_data)
-
             except Exception:
                 clone_list.append(Clone(f,**self.params))
         
         for i in xrange(len(clone_list)):
             
-            clone_list[i].dorsal_edge = np.vstack(self.shape_data.loc[clone_list[i].filepath].x, self.shape_data.loc[clone_list[i].filepath].y)
-            clone_list[i].q = self.shape_data.loc[clone_list[i].filepath].q
-            clone_list[i].qi = self.shape_data.loc[clone_list[i].filepath].qi
+            try:
+                
+                clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[clone_list[i].filepath].x),
+                    np.transpose(self.shape_data.loc[clone_list[i].filepath].y))))
+                clone_list[i].q = self.shape_data.loc[clone_list[i].filepath].q
+                clone_list[i].qi = self.shape_data.loc[clone_list[i].filepath].qi
+                idx = self.shape_data.loc[clone_list[i].filepath].checkpoint==1
+                clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
 
+            except KeyError:
+                pass
         self.clone_list = clone_list
-        self.metadata = metadata
 
         self.curr_idx = 0
         self.clone = self.clone_list[self.curr_idx]
@@ -476,7 +466,7 @@ class Viewer:
             while line:
                 for clone in self.clone_list:
                     if (line.split("\t")[0] == clone.filepath):
-                        analysis_file_out.write(clone_to_line(clone, DATA_COLS, METADATA_FIELDS, self.metadata[clone.filepath]))
+                        analysis_file_out.write(clone_to_line(clone, DATA_COLS, METADATA_FIELDS, {m:clone[m] for m in METADATA_FIELDS}))
                 else:
                     analysis_file_out.write(line)
 

@@ -71,6 +71,9 @@ class Clone(object):
         self.tail_tip = np.nan
         self.tail_spine_length = np.nan
         self.dorsal_point = np.nan
+        
+        self.dorsal_edge = np.nan
+        self.checkpoints = np.nan
 
         self.peak = np.nan
         self.deyecenter_pedestalmax = np.nan
@@ -397,6 +400,7 @@ class Clone(object):
      
         for i in xrange(len(edges_x)):
             for key, value in kwargs.iteritems():
+                print key, value
                 if self.intersect([cx, cy, edges_x[i], edges_y[i]], [value[0], value[1], value[2], value[3]]):
                     mask_x.append(edges_x[i])
                     mask_y.append(edges_y[i])
