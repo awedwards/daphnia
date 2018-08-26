@@ -332,6 +332,7 @@ class Clone(object):
         tail_tip_index = np.argmax(np.dot(edge_index-np.array([cx,cy]), np.array([cx-ex, cy-ey]))) 
         self.tail_tip = tuple(edge_index[tail_tip_index, :])
         tx, ty = self.tail_tip
+        
 
         cx, cy = (tx + ex)/2, (ty + ey)/2
 
@@ -397,7 +398,6 @@ class Clone(object):
      
         for i in xrange(len(edges_x)):
             for key, value in kwargs.iteritems():
-                print key, value
                 if self.intersect([cx, cy, edges_x[i], edges_y[i]], [value[0], value[1], value[2], value[3]]):
                     mask_x.append(edges_x[i])
                     mask_y.append(edges_y[i])
@@ -452,8 +452,8 @@ class Clone(object):
         
         # calculate minimum distance between dorsal/ventral vectors originating at the eye center and all of the eye pixels
 
-        self.eye_dorsal = ep[np.argmin(np.linalg.norm(ep - (dorsal_target_x, dorsal_target_y), axis=1)), :]
-        self.eye_ventral = ep[np.argmin(np.linalg.norm(ep - (ventral_target_x, ventral_target_y), axis=1)), :]
+        self.eye_dorsal = tuple(ep[np.argmin(np.linalg.norm(ep - (dorsal_target_x, dorsal_target_y), axis=1)), :])
+        self.eye_ventral = tuple(ep[np.argmin(np.linalg.norm(ep - (ventral_target_x, ventral_target_y), axis=1)), :])
 
     def find_head(self, im):
         
@@ -485,7 +485,7 @@ class Clone(object):
             
             if e is not None:
                 if self.dist(e, start) < self.dist(p1, p2)/5:
-                    self.tail = e
+                    self.tail = tuple(e)
                     self.tail_dorsal = self.find_edge2(edges, start, end)
                     break
 
@@ -519,7 +519,7 @@ class Clone(object):
         except TypeError:
             
             # if head edge can't be found, just estimate based on dorsal eye point
-            self.head = edx - (-0.05*d*(edx - tx))/d, edy - (-0.05*d*(edy - ty))/d
+            self.head = (edx - (-0.05*d*(edx - tx))/d, edy - (-0.05*d*(edy - ty))/d)
 
     def find_tail(self, im):
 
@@ -541,7 +541,9 @@ class Clone(object):
                 self.tail_dorsal = dorsal_edge[np.argmin(np.linalg.norm(dorsal_edge - self.tail, axis=1)), :]
                 break
             old_diffs = diffs
-
+        self.tail = tuple(self.tail)
+        self.tail_dorsal = tuple(self.tail_dorsal)
+        self.tail_spine_length = self.dist(self.tail_tip, self.tail_dorsal)
 
     def initialize_dorsal_edge(self, im):
         
