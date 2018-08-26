@@ -667,6 +667,7 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
                         val = metadata[mf]
                 except Exception:
                     val = "nan"
+                tmpdata.append(str(val))
 
             for c in cols:
                 val = str(getattr(clone, c))
