@@ -689,8 +689,8 @@ class Clone(object):
 
         for i in np.arange(n):
             
-            idx = self.index_on_pixels(edges[np.max([0, current[0]-window]):np.min([w, current[0]+window+1]),
-                np.max([0, current[1]-window]):np.min([h, current[1]+window+1])]) - (window,window)
+            idx = self.index_on_pixels(edges[int(np.max([0, current[0]-window])):int(np.min([w, current[0]+window+1])),
+                int(np.max([0, current[1]-window])):int(np.min([h, current[1]+window+1]))]) - (window,window)
             idx = idx[~np.all(idx == 0, axis=1)]
 
             try:
@@ -721,10 +721,10 @@ class Clone(object):
 
         dorsal_edge = [list(current)]
         
-        target_vector = np.array(target - current)
+        target_vector = np.array(target) - np.array(current)
         target_vector = self.norm_vec(target_vector)
         
-        dorsal_vector = np.array(current - (cx, cy))
+        dorsal_vector = np.array(current) - np.array((cx, cy))
         dorsal_vector = self.norm_vec(dorsal_vector)
 
         nxt_vector = target_vector
@@ -734,8 +734,8 @@ class Clone(object):
 
         while (self.dist(current, target) > 2) and (window < 10):
 
-            idx = self.index_on_pixels(edges[ np.max([0,current[0]-window]):np.min([w,current[0]+window+1]),
-                                      np.max([0, current[1]-window]):np.min([h,current[1]+window+1])]) - (window,window)
+            idx = self.index_on_pixels(edges[ int(np.max([0,current[0]-window])):int(np.min([w,current[0]+window+1])),
+                int(np.max([0, current[1]-window])):int(np.min([h,current[1]+window+1]))]) - (window,window)
             idx = idx[~np.all(idx == 0, axis=1)]
 
             try:
@@ -746,13 +746,13 @@ class Clone(object):
                     raise(ValueError)
                 else:
 
-                    target_vector = np.array(target - current)
+                    target_vector = np.array(target) - np.array(current)
                     target_vector = self.norm_vec(target_vector)
 
-		    dorsal_vector = np.array(current - (cx, cy))
+		    dorsal_vector = np.array(current) - np.array((cx, cy))
 		    dorsal_vector = self.norm_vec(dorsal_vector)
 
-		    nxt_vector = np.array(nxt - current)
+		    nxt_vector = np.array(nxt) - np.array(current)
 		    nxt_vector = self.norm_vec(nxt_vector)
 		    
 		    current = nxt
@@ -763,8 +763,6 @@ class Clone(object):
                 window += 1
         if (list(target) in dorsal_edge):
             dorsal_edge.remove(list(target))
-        #if not (list(target) in dorsal_edge):
-        #    dorsal_edge.append(list(target))
 
         return dorsal_edge
     

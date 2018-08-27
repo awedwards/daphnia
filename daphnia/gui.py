@@ -112,7 +112,6 @@ class PointFixer:
         
         self.display = display
         self.clone = clone
-        self.clone.tail_dorsal = np.asarray(self.clone.tail_dorsal, dtype=float)
         self.params = {}
         self.de = clone.dorsal_edge
         
