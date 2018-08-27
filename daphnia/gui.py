@@ -351,10 +351,12 @@ class Viewer:
 
         self.data = utils.csv_to_df(self.params["input_analysis_file"])
         self.saved_data = utils.csv_to_df(self.params["output_analysis_file"])
+        
         try:
             self.data['accepted'] = self.saved_data.accepted
         except AttributeError:
             self.data['accepted'] = np.zeros(len(self.data))
+        
         print "Reading shape data"
         self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
         clone_list = []
@@ -364,6 +366,13 @@ class Viewer:
             try:
                 fileparts = f.split("/")
                 clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+                
+                try:     # maybe the saved file does not exist, but the 'accepted' field is 1
+                    if clone.accepted:
+                        clone = utils.dfrow_to_clone(self.saved_data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+                except Exception:
+                    pass
+
                 clone.filepath = f
                 clone_list.append(clone)
             except Exception:
