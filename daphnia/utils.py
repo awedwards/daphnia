@@ -49,7 +49,7 @@ def parse(s):
             "rig":rigId,
             "datetime":datetime}
 
-def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict, early_release, late_release, duplicate_data, experimenter_data, inducer_data):
+def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, season_dict, early_release, late_release, duplicate_data, experimenter_data, inducer_data, pixel_to_mm=None):
 
     _, filebase = os.path.split(filepath)
     md = parse(filebase)
@@ -65,13 +65,17 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
         md['pond'] = ''
         md['id'] = ''
         md['season'] = ''
-    try:
-        im = cv2.imread(filepath.replace("full","fullMicro"), cv2.IMREAD_GRAYSCALE)
-        md['pixel_to_mm'] = calc_pixel_to_mm(im)
-    except Exception as e:
-        print "Error extracting conversion factor from micrometer: " + str(e)
-        md['pixel_to_mm'] = np.nan
     
+    if pixel_to_mm is None:
+        try:
+            im = cv2.imread(filepath.replace("full","fullMicro"), cv2.IMREAD_GRAYSCALE)
+            md['pixel_to_mm'] = calc_pixel_to_mm(im)
+        except Exception as e:
+            print "Error extracting conversion factor from micrometer: " + str(e)
+            md['pixel_to_mm'] = np.nan
+    else:
+        md['pixel_to_mm'] = pixel_to_mm
+
     md['manual_PF'] = 'U'
     md['manual_PF_reason'] = ""
     
@@ -602,6 +606,7 @@ def clone_to_line(clone, cols, metadata_fields, metadata):
 
         except Exception:
             val = "nan"
+        tmpdata.append(str(val))
 
     for c in cols:
         val = str(getattr(clone, c))

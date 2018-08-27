@@ -46,10 +46,9 @@ DATA_COLS = ["filepath",
             "peak",
             "deyecenter_pedestalmax",
             "dorsal_residual",
+            "modified",
             "automated_PF",
-            "automated_PF_reason",
-            "modified"]
-
+            "automated_PF_reason"]
 
 METADATA_FIELDS = ["filebase",
             "barcode",
@@ -104,7 +103,6 @@ class PointFixer:
         if im is None:
             print "Image " + clone.filepath + " not found. Check your image list."
             raise(IOError)
-        print "Drawing"
         self.original_image = im
         self.image = im
         self.edges = False
@@ -237,7 +235,15 @@ class PointFixer:
         axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
         self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev', initial=str(self.edge_blur))
         self.blurtextbox.on_submit(self.set_edge_blur)
- 
+
+        axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
+        self.acceptbutton = Button(axaccept, 'Accept Changes')
+        self.acceptbutton.color = "gray"
+        self.acceptbutton.on_clicked(self.accept)
+        
+        if self.clone.accepted:
+            self.acceptbutton.color = "blue"
+
         if self.show_dorsal_edge:
             try:
                 self.display.scatter(self.de[:,1], self.de[:,0], c="blue")
@@ -310,6 +316,11 @@ class PointFixer:
         self.add_checkpoint = not self.add_checkpoint
         self.draw()
 
+    def accept(self, event):
+
+        self.clone.accepted = not self.clone.accepted
+        self.draw()
+
 class Viewer:
 
     def __init__(self, params):
@@ -339,8 +350,11 @@ class Viewer:
         print "Reading in analysis file"
 
         self.data = utils.csv_to_df(self.params["input_analysis_file"])
-        self.data = self.data.assign(save=pd.Series([0]*len(self.data.filebase)), index=self.data.index)
-
+        self.saved_data = utils.csv_to_df(self.params["output_analysis_file"])
+        try:
+            self.data['accepted'] = self.saved_data.accepted
+        except AttributeError:
+            self.data['accepted'] = np.zeros(len(self.data))
         print "Reading shape data"
         self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
         clone_list = []
@@ -463,15 +477,63 @@ class Viewer:
             line = analysis_file_in.readline()
 
             while line:
+                written = False
                 for clone in self.clone_list:
-                    if (line.split("\t")[0] == clone.filepath):
-                        analysis_file_out.write(clone_to_line(clone, DATA_COLS, METADATA_FIELDS, {m:clone[m] for m in METADATA_FIELDS}))
+                    if (line.split("\t")[0] == clone.filebase) and clone.accepted:
+                        metadata = utils.build_metadata_dict(clone.filepath,
+                                self.curation_data,
+                                self.males_list,
+                                self.induction_dates,
+                                self.season_data,
+                                self.early_release,
+                                self.late_release,
+                                self.duplicate_data,
+                                self.experimenter_data,
+                                self.inducer_data,
+                                pixel_to_mm=clone.pixel_to_mm)
+                        analysis_file_out.write(utils.clone_to_line(clone, DATA_COLS, metadata.keys(), metadata)+"\n")
+                        written = True
+
+                if not written:    
+                    analysis_file_out.write(line)
+
+                line = analysis_file_in.readline()
+        
+        with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
+            
+            line = shape_file_in.readline()
+
+            while line:
+                for clone in self.clone_list:
+                    if (line.split("\t")[0] == clone.filepath) and clone.accepted:
+                        
+                        for i in np.arange(len(clone.dorsal_edge)):
+                            if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
+                                checkpoint = 1
+                            else:
+                                checkpoint = 0
+                            shape_file_out.write('\t'.join([clone.filepath, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
+                            line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
+
+                    else:
+                        shape_file_out.write(line)
+                        line = shape_file_in.readline()
+"""
+        with open(self.params["input_analysis_metadata_file"],"rb") as analysis_file_in, open(self.params["output_analysis_metadata_file"],"wb") as analysis_file_out:
+            
+            line = analysis_file_in.readline()
+
+            while line:
+                for clone in self.clone_list:
+                    if (line.split("\t")[0] == clone.filepath) and clone.accepted:
+                        analysis_file_out.write(clone_to_line(clone, DATA_COLS, METADATA_FIELDS, {m:getattr(clone,m) for m in METADATA_FIELDS}))
                 else:
                     analysis_file_out.write(line)
 
                 line = analysis_file_in.readline()
-
+"""
 #
+
 gui_params = utils.myParse("gui_params.txt")
 gui_params.update(utils.myParse("params.txt"))
 

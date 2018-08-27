@@ -86,7 +86,7 @@ class Clone(object):
         self.automated_PF_reason = ''
 
         self.analyzed = False
-        self.modified = False
+        self.accepted = 0
 
         # parameters passed in
         self.count_animal_pixels_blur = kwargs['count_animal_pixels_blur']

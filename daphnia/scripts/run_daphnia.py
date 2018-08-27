@@ -77,10 +77,9 @@ def daphnia(params, images, plot, plot_params):
             "peak",
             "deyecenter_pedestalmax",
             "dorsal_residual",
-            "modified",
+            "accepted",
             "automated_PF",
             "automated_PF_reason"]
-
     METADATA_FIELDS = ["filebase",
             "barcode",
             "cloneid",
