@@ -374,7 +374,10 @@ class Viewer:
                     pass
 
                 clone.filepath = f
-                clone_list.append(clone)
+
+                if int(self.params['skip_accepted']) and clone.accepted:
+                    continue
+                else: clone_list.append(clone)
             except Exception:
                 clone_list.append(Clone(f,**self.params))
         
