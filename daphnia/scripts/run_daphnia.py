@@ -60,6 +60,7 @@ def daphnia(params, images, plot, plot_params):
             "dor_vec",
             "ven_vec",
             "eye_dorsal",
+            "eye_ventral",
             "head",
             "tail",
             "tail_tip",
