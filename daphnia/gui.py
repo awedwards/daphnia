@@ -4,6 +4,7 @@ import utils
 import matplotlib as mpl
 mpl.use('TKAgg')
 import matplotlib.pyplot as plt
+plt.style.use('seaborn-dark-palette')
 from matplotlib.widgets import Button, Slider, TextBox
 import numpy as np
 import pandas as pd
@@ -46,7 +47,7 @@ DATA_COLS = ["filepath",
             "peak",
             "deyecenter_pedestalmax",
             "dorsal_residual",
-            "modified",
+            "accepted",
             "automated_PF",
             "automated_PF_reason"]
 
@@ -163,7 +164,7 @@ class PointFixer:
         
         if self.clone.flip:
             self.clone.flip = not self.clone.flip
-
+        
         self.clone.find_features(self.original_image, **self.params)
         self.clone.get_orientation_vectors()
         self.clone.find_head(self.original_image, **self.params)
@@ -183,14 +184,14 @@ class PointFixer:
     def flip_button_press(self, event):
    
         self.display.imshow(self.image, cmap="gray")
-        params = {}
         self.clone.flip = not self.clone.flip
-        self.clone.find_features(self.original_image, **self.params)
+        self.clone.find_eye(self.original_image)
+        self.clone.find_features(self.original_image)
         self.clone.get_orientation_vectors()
         self.clone.eye_vertices()
-        self.clone.find_head(self.original_image, **self.params)
-        self.clone.initialize_dorsal_edge(self.original_image, **self.params)
-        self.clone.fit_dorsal_edge(self.original_image, **self.params)
+        self.clone.find_head(self.original_image)
+        self.clone.initialize_dorsal_edge(self.original_image)
+        self.clone.fit_dorsal_edge(self.original_image)
         self.clone.find_tail(self.original_image)
         self.clone.remove_tail_spine()
         self.de = self.clone.dorsal_edge
@@ -211,21 +212,28 @@ class PointFixer:
     
     def set_edge_blur(self, text):
         
-        self.edge_blur = float(text)
+        self.blurtextbox.set_val('')
+
+        try:
+            self.edge_blur = float(text)
+        except ValueError:
+            print "Invalid value for changing image blur"
+            return
+
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.edges = False
         self.checkpoints = self.clone.checkpoints
         self.de = self.clone.dorsal_edge
         self.edge_button_press(1)
-
+        self.blurtextbox.set_val(text)
+        
     def draw(self):
         
         self.display.clear()
         
         axaddcheck = plt.axes([0.025, 0.085, 0.1, 0.075])
-        self.addcheckbutton = Button(axaddcheck, 'Add Checkpoint')
-        self.addcheckbutton.color = "gray"
+        self.addcheckbutton = Button(axaddcheck, 'Add Checkpoint', color=[0.792156862745098, 0.8823529411764706, 1.0],hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.addcheckbutton.on_clicked(self.add_checkpoint_button_press)
 
         if self.add_checkpoint:
@@ -237,8 +245,7 @@ class PointFixer:
         self.blurtextbox.on_submit(self.set_edge_blur)
 
         axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
-        self.acceptbutton = Button(axaccept, 'Accept Changes')
-        self.acceptbutton.color = "gray"
+        self.acceptbutton = Button(axaccept, 'Accept Changes', color=[0.792156862745098, 0.8823529411764706, 1.0],hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.acceptbutton.on_clicked(self.accept)
         
         if self.clone.accepted:
@@ -261,7 +268,7 @@ class PointFixer:
                 pass
 
         self.display.axis('off')
-        self.display.set_title(self.clone.filepath)
+        self.display.set_title(self.clone.filepath, color="black")
         self.display.figure.canvas.draw()
 
     def get_closest_checkpoint(self, x, y, n=1):
@@ -356,11 +363,12 @@ class Viewer:
             self.data['accepted'] = self.saved_data.accepted
         except AttributeError:
             self.data['accepted'] = np.zeros(len(self.data))
-        
-        print "Reading shape data"
-        self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
+       
+        if self.data['accepted'].any():
+            self.shape_data = utils.read_shape_long(self.params["output_shape_file"]).set_index('filepath')
+        else:
+            self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
         clone_list = []
-        #metadata = {}
 
         for f in file_list:
             try:
@@ -400,6 +408,7 @@ class Viewer:
         self.clone = self.clone_list[self.curr_idx]
         
         self.fig = plt.figure(figsize=(15,10))
+        self.fig.patch.set_facecolor("lightgrey")
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
 
@@ -411,37 +420,37 @@ class Viewer:
     def populate_figure(self):
 
         axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
-        self.resetbutton = Button(axreset, 'Reset')
+        self.resetbutton = Button(axreset, 'Reset', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.resetbutton.on_clicked(self.obj.reset_button_press)
 
         axflip = plt.axes([0.50, 0.01, 0.1, 0.075])
-        self.flipbutton = Button(axflip, 'Flip')
+        self.flipbutton = Button(axflip, 'Flip', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.flipbutton.on_clicked(self.obj.flip_button_press)
 
         axedges = plt.axes([0.60, 0.01, 0.1, 0.075])
-        self.edgebutton = Button(axedges, 'Toggle Edges')
+        self.edgebutton = Button(axedges, 'Toggle Edges', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.edgebutton.on_clicked(self.obj.edge_button_press)
 
         axtogdorsal = plt.axes([0.70, 0.01, 0.1, 0.075])
-        self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit')
+        self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.togdorsalbutton.on_clicked(self.obj.toggle_dorsal_button_press)
         
         axdel = plt.axes([0.025, 0.01, 0.1, 0.075])
-        self.delcheckbutton = Button(axdel, 'Delete Checkpoint')
+        self.delcheckbutton = Button(axdel, 'Delete Checkpoint', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.delcheckbutton.on_clicked(self.obj.delete_selected_checkpoint)
         
         axsave = plt.axes([0.875, 0.8, 0.1, 0.075])
-        self.savebutton = Button(axsave, 'Save')
+        self.savebutton = Button(axsave, 'Save', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
         self.savebutton.on_clicked(self.save)
 
         if self.curr_idx+1 < len(self.clone_list):
             axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
-            self.nextbutton = Button(axnext, 'Next')
+            self.nextbutton = Button(axnext, 'Next', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
             self.nextbutton.on_clicked(self.next_button_press)
 
         if self.curr_idx > 0:
             axprev = plt.axes([0.875, 0.085, 0.1, 0.075])
-            self.prevbutton = Button(axprev, 'Previous')
+            self.prevbutton = Button(axprev, 'Previous', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
             self.prevbutton.on_clicked(self.prev_button_press)
 
 
@@ -491,6 +500,7 @@ class Viewer:
             while line:
                 written = False
                 for clone in self.clone_list:
+                    print clone.accepted
                     if (line.split("\t")[0] == clone.filebase) and clone.accepted:
                         metadata = utils.build_metadata_dict(clone.filepath,
                                 self.curation_data,
