@@ -120,7 +120,8 @@ class PointFixer:
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
-        self.draw() 
+
+        self.draw()
     
     def __call__(self, event):
         if event.inaxes!=self.display.axes: return
@@ -411,11 +412,13 @@ class Viewer:
         self.fig.patch.set_facecolor("lightgrey")
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
-
+        
         self.obj = PointFixer(self.clone, self.display)
         self.populate_figure()
-
+        
         self.add_checkpoint = False
+        
+        return
 
     def populate_figure(self):
 
@@ -452,7 +455,8 @@ class Viewer:
             axprev = plt.axes([0.875, 0.085, 0.1, 0.075])
             self.prevbutton = Button(axprev, 'Previous', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
             self.prevbutton.on_clicked(self.prev_button_press)
-
+        
+        self.obj.draw()
 
     def prev_button_press(self,event):
 
@@ -461,8 +465,8 @@ class Viewer:
         self.curr_idx -= 1
         self.clone = self.clone_list[self.curr_idx]
         
-        plt.clf()
-        
+        self.fig.clear()
+
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
 
@@ -476,18 +480,22 @@ class Viewer:
         self.curr_idx += 1
         self.clone = self.clone_list[self.curr_idx]
         
-        plt.clf()
+        self.fig.clear()
 
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
+
         try:
+
             self.obj = PointFixer(self.clone, self.display)
+            self.populate_figure()
+
         except Exception as e:
             print "Error initializing " + self.clone.filepath + ": " + str(e)
             
             if self.curr_idx < len(self.clone_list)-1:
                 self.next_button_press(event)
-        self.populate_figure()
+        
 
     def save(self, event):
 
@@ -500,7 +508,6 @@ class Viewer:
             while line:
                 written = False
                 for clone in self.clone_list:
-                    print clone.accepted
                     if (line.split("\t")[0] == clone.filebase) and clone.accepted:
                         metadata = utils.build_metadata_dict(clone.filepath,
                                 self.curation_data,
