@@ -366,9 +366,9 @@ class Viewer:
             self.data['accepted'] = np.zeros(len(self.data))
        
         if self.data['accepted'].any():
-            self.shape_data = utils.read_shape_long(self.params["output_shape_file"]).set_index('filepath')
+            self.shape_data = utils.read_shape_long(self.params["output_shape_file"]).set_index('filebase')
         else:
-            self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filepath')
+            self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filebase')
         clone_list = []
 
         for f in file_list:
@@ -392,17 +392,14 @@ class Viewer:
         
         for i in xrange(len(clone_list)):
             
-            try:
                 
-                clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[clone_list[i].filepath].x),
-                    np.transpose(self.shape_data.loc[clone_list[i].filepath].y))))
-                clone_list[i].q = self.shape_data.loc[clone_list[i].filepath].q
-                clone_list[i].qi = self.shape_data.loc[clone_list[i].filepath].qi
-                idx = self.shape_data.loc[clone_list[i].filepath].checkpoint==1
-                clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
+            clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[clone_list[i].filebase].x),
+                np.transpose(self.shape_data.loc[clone_list[i].filebase].y))))
+            clone_list[i].q = self.shape_data.loc[clone_list[i].filebase].q
+            clone_list[i].qi = self.shape_data.loc[clone_list[i].filebase].qi
+            idx = self.shape_data.loc[clone_list[i].filebase].checkpoint==1
+            clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
 
-            except KeyError:
-                pass
         self.clone_list = clone_list
 
         self.curr_idx = 0
