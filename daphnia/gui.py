@@ -372,23 +372,23 @@ class Viewer:
         clone_list = []
 
         for f in file_list:
-            #try:
-            fileparts = f.split("/")
-            clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
-            
-            try:     # maybe the saved file does not exist, but the 'accepted' field is 1
-                if clone.accepted:
-                    clone = utils.dfrow_to_clone(self.saved_data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+            try:
+                fileparts = f.split("/")
+                clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+                
+                try:     # maybe the saved file does not exist, but the 'accepted' field is 1
+                    if clone.accepted:
+                        clone = utils.dfrow_to_clone(self.saved_data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+                except Exception:
+                    pass
+
+                clone.filepath = f
+
+                if int(self.params['skip_accepted']) and clone.accepted:
+                    continue
+                else: clone_list.append(clone)
             except Exception:
-                pass
-
-            clone.filepath = f
-
-            if int(self.params['skip_accepted']) and clone.accepted:
-                continue
-            else: clone_list.append(clone)
-            #except Exception:
-            #    clone_list.append(Clone(f,**self.params))
+                clone_list.append(Clone(f,**self.params))
         
         for i in xrange(len(clone_list)):
             
