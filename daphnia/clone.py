@@ -12,7 +12,9 @@ import random
 class Clone(object):
     
     def __init__(self, filepath, **kwargs):
+        
         self.filepath = filepath
+        self.filebase = filepath.split("/")[-1]
 
         self.animal_area = np.nan
         self.animal_dorsal_area = np.nan
