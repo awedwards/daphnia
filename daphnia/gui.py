@@ -372,27 +372,26 @@ class Viewer:
         clone_list = []
 
         for f in file_list:
-            try:
-                fileparts = f.split("/")
-                clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
-                
-                try:     # maybe the saved file does not exist, but the 'accepted' field is 1
-                    if clone.accepted:
-                        clone = utils.dfrow_to_clone(self.saved_data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
-                except Exception:
-                    pass
-
-                clone.filepath = f
-
-                if int(self.params['skip_accepted']) and clone.accepted:
-                    continue
-                else: clone_list.append(clone)
+            #try:
+            fileparts = f.split("/")
+            clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+            
+            try:     # maybe the saved file does not exist, but the 'accepted' field is 1
+                if clone.accepted:
+                    clone = utils.dfrow_to_clone(self.saved_data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
             except Exception:
-                clone_list.append(Clone(f,**self.params))
+                pass
+
+            clone.filepath = f
+
+            if int(self.params['skip_accepted']) and clone.accepted:
+                continue
+            else: clone_list.append(clone)
+            #except Exception:
+            #    clone_list.append(Clone(f,**self.params))
         
         for i in xrange(len(clone_list)):
             
-                
             clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[clone_list[i].filebase].x),
                 np.transpose(self.shape_data.loc[clone_list[i].filebase].y))))
             clone_list[i].q = self.shape_data.loc[clone_list[i].filebase].q
