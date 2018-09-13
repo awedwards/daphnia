@@ -385,7 +385,8 @@ class PointFixer:
             self.lasso = LassoSelector(self.display, onselect=self.getROIverts)
             self.edges = False
             self.edge_button_press(1)
-        
+        else:
+            self.lasso = 0
         self.draw()
     
 class Viewer:
