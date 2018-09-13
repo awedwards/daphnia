@@ -1,11 +1,12 @@
 import os
 import cv2
 import utils
-import matplotlib as mpl
-mpl.use('TKAgg')
+import matplotlib
+matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-dark-palette')
-from matplotlib.widgets import Button, Slider, TextBox
+from matplotlib.widgets import Button, Slider, TextBox, LassoSelector
+from matplotlib.path import Path
 import numpy as np
 import pandas as pd
 from skimage.filters import gaussian
@@ -99,23 +100,36 @@ ANALYSIS_METADATA_FIELDS = ["edge_pixel_distance_threshold_multiplier",
 class PointFixer:
     
     def __init__(self, clone, display):
+        
         print "Reading image"
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
         if im is None:
             print "Image " + clone.filepath + " not found. Check your image list."
             raise(IOError)
+        
         self.original_image = im
         self.image = im
-        self.edges = False
-        self.edge_blur = 1.0
-        
+
         self.display = display
         self.clone = clone
+        
+        self.edges = False
+        self.edge_blur = 1.0
+
+        hc = self.clone.high_contrast(self.original_image)
+        
+        edges = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
+        self.edge_image  = self.clone.mask_antenna(edges, (self.clone.animal_x_center, self.clone.animal_y_center),
+                dorsal=self.clone.dorsal_mask_endpoints,
+                ventral=self.clone.ventral_mask_endpoints,
+                anterior=self.clone.anterior_mask_endpoints)
+        
         self.params = {}
         self.de = clone.dorsal_edge
         
         self.show_dorsal_edge = True
         self.add_checkpoint = False
+        self.mask_clicked = False
         
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
@@ -124,9 +138,10 @@ class PointFixer:
         self.draw()
     
     def __call__(self, event):
+        
         if event.inaxes!=self.display.axes: return
         
-        if self.add_checkpoint == True:
+        if self.add_checkpoint:
             self.get_closest_checkpoint(event.ydata, event.xdata, n=2)
             self.insert_new_checkpoint(event.ydata, event.xdata)
             self.clone.checkpoints = self.checkpoints
@@ -134,28 +149,31 @@ class PointFixer:
             self.add_checkpoint = False
             self.selected = None
             self.draw()
+        
+        elif not self.mask_clicked:
 
-        elif (self.selected is None):
+            if (self.selected is None):
             
-            self.get_closest_checkpoint(event.ydata, event.xdata)
-            self.display.scatter(self.selected[1], self.selected[0], c="green")
-            self.display.figure.canvas.draw()
-        else:
+                self.get_closest_checkpoint(event.ydata, event.xdata)
+                self.display.scatter(self.selected[1], self.selected[0], c="green")
+                self.display.figure.canvas.draw()
+        
+            else:
             
-            self.display.clear()
+                self.display.clear()
+                
+                self.set_closest_checkpoint(event.ydata, event.xdata)
+                self.clone.checkpoints = self.checkpoints
+                self.fit_dorsal()
+                self.selected = None
             
-            self.set_closest_checkpoint(event.ydata, event.xdata)
-            self.clone.checkpoints = self.checkpoints
-            self.fit_dorsal()
-            self.selected = None
-            
-            self.draw()
-    
+                self.draw()
+
     def fit_dorsal(self):
 
-        self.clone.fit_dorsal_edge(self.original_image)
+        self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur,edges=self.edge_image)
         self.clone.remove_tail_spine()
-        self.de = self.clone.dorsal_edge
+        self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
 
     def reset_button_press(self, event):
@@ -175,8 +193,9 @@ class PointFixer:
         self.clone.initialize_dorsal_edge(self.original_image, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, **self.params)
         self.clone.find_tail(self.original_image)
+        self.edge_image = self.clone.edges
         self.clone.remove_tail_spine()
-        self.de = self.clone.dorsal_edge
+        self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.selected = None 
         self.checkpoints = self.clone.checkpoints
         
@@ -193,9 +212,10 @@ class PointFixer:
         self.clone.find_head(self.original_image)
         self.clone.initialize_dorsal_edge(self.original_image)
         self.clone.fit_dorsal_edge(self.original_image)
+        self.edge_image = self.clone.edges
         self.clone.find_tail(self.original_image)
         self.clone.remove_tail_spine()
-        self.de = self.clone.dorsal_edge
+        self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints 
         self.draw()
 
@@ -204,10 +224,12 @@ class PointFixer:
         self.edges = not self.edges
 
         if self.edges:
-            hc = self.clone.high_contrast(self.original_image)
-            self.image = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
+            
+            self.image = self.edge_image
             self.draw()
+
         if not self.edges:
+            
             self.image = self.original_image
             self.draw()
     
@@ -223,9 +245,11 @@ class PointFixer:
 
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
-        self.edges = False
+        self.de = self.clone.interpolate(self.clone.dorsal_edge)
+        self.edge_image = self.clone.edges
         self.checkpoints = self.clone.checkpoints
-        self.de = self.clone.dorsal_edge
+        
+        self.edges = False
         self.edge_button_press(1)
         self.blurtextbox.set_val(text)
         
@@ -233,12 +257,15 @@ class PointFixer:
         
         self.display.clear()
         
+        buttoncolor=[0.792156862745098, 0.8823529411764706, 1.0]
+
         axaddcheck = plt.axes([0.025, 0.085, 0.1, 0.075])
-        self.addcheckbutton = Button(axaddcheck, 'Add Checkpoint', color=[0.792156862745098, 0.8823529411764706, 1.0],hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.addcheckbutton = Button(axaddcheck, 'Add Checkpoint', color=buttoncolor,hovercolor=buttoncolor)
         self.addcheckbutton.on_clicked(self.add_checkpoint_button_press)
 
         if self.add_checkpoint:
             self.addcheckbutton.color = "green"
+        
         self.display.imshow(self.image, cmap="gray")
         
         axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
@@ -246,11 +273,18 @@ class PointFixer:
         self.blurtextbox.on_submit(self.set_edge_blur)
 
         axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
-        self.acceptbutton = Button(axaccept, 'Accept Changes', color=[0.792156862745098, 0.8823529411764706, 1.0],hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.acceptbutton = Button(axaccept, 'Accept Changes', color=buttoncolor,hovercolor=buttoncolor)
         self.acceptbutton.on_clicked(self.accept)
         
         if self.clone.accepted:
             self.acceptbutton.color = "blue"
+
+        axmask = plt.axes([0.025, 0.185, 0.1, 0.075])
+        self.maskbutton = Button(axmask, 'Mask', color=buttoncolor, hovercolor=buttoncolor)
+        self.maskbutton.on_clicked(self.mask)
+        
+        if self.mask_clicked:
+            self.maskbutton.color = "green"
 
         if self.show_dorsal_edge:
             try:
@@ -267,7 +301,7 @@ class PointFixer:
                 self.display.scatter(self.checkpoints[:,1], self.checkpoints[:,0], c=checkpoint_color)
             except TypeError:
                 pass
-
+        
         self.display.axis('off')
         self.display.set_title(self.clone.filepath, color="black")
         self.display.figure.canvas.draw()
@@ -329,6 +363,31 @@ class PointFixer:
         self.clone.accepted = not self.clone.accepted
         self.draw()
 
+    def getROIverts(self, verts):
+        path = Path(verts)
+            
+        x,y = np.where(self.edge_image)
+        
+        for i in xrange(len(x)):
+            if path.contains_point([y[i],x[i]]):
+                self.edge_image[x[i]][y[i]] = 0
+                self.image = self.edge_image
+
+        self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur, edges=self.edge_image)
+        self.fit_dorsal()
+        self.draw()
+
+    def mask(self, event):
+        
+        self.mask_clicked = not self.mask_clicked
+        
+        if self.mask_clicked:
+            self.lasso = LassoSelector(self.display, onselect=self.getROIverts)
+            self.edges = False
+            self.edge_button_press(1)
+        
+        self.draw()
+    
 class Viewer:
 
     def __init__(self, params):
@@ -410,6 +469,8 @@ class Viewer:
         self.display.axis('off')
         
         self.obj = PointFixer(self.clone, self.display)
+        
+        lasso = LassoSelector(self.display, self.obj.getROIverts)
         self.populate_figure()
         
         self.add_checkpoint = False
@@ -417,39 +478,41 @@ class Viewer:
         return
 
     def populate_figure(self):
+        
+        button_color = [0.792156862745098, 0.8823529411764706, 1.0]
 
         axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
-        self.resetbutton = Button(axreset, 'Reset', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.resetbutton = Button(axreset, 'Reset', color=button_color, hovercolor=button_color)
         self.resetbutton.on_clicked(self.obj.reset_button_press)
 
         axflip = plt.axes([0.50, 0.01, 0.1, 0.075])
-        self.flipbutton = Button(axflip, 'Flip', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.flipbutton = Button(axflip, 'Flip', color=button_color, hovercolor=button_color)
         self.flipbutton.on_clicked(self.obj.flip_button_press)
 
         axedges = plt.axes([0.60, 0.01, 0.1, 0.075])
-        self.edgebutton = Button(axedges, 'Toggle Edges', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.edgebutton = Button(axedges, 'Toggle Edges', color=button_color, hovercolor=button_color)
         self.edgebutton.on_clicked(self.obj.edge_button_press)
 
         axtogdorsal = plt.axes([0.70, 0.01, 0.1, 0.075])
-        self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.togdorsalbutton = Button(axtogdorsal, 'Toggle Dorsal Fit', color=button_color, hovercolor=button_color)
         self.togdorsalbutton.on_clicked(self.obj.toggle_dorsal_button_press)
         
         axdel = plt.axes([0.025, 0.01, 0.1, 0.075])
-        self.delcheckbutton = Button(axdel, 'Delete Checkpoint', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.delcheckbutton = Button(axdel, 'Delete Checkpoint', color=button_color, hovercolor=button_color)
         self.delcheckbutton.on_clicked(self.obj.delete_selected_checkpoint)
         
         axsave = plt.axes([0.875, 0.8, 0.1, 0.075])
-        self.savebutton = Button(axsave, 'Save', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+        self.savebutton = Button(axsave, 'Save', color=button_color, hovercolor=button_color)
         self.savebutton.on_clicked(self.save)
 
         if self.curr_idx+1 < len(self.clone_list):
             axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
-            self.nextbutton = Button(axnext, 'Next', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+            self.nextbutton = Button(axnext, 'Next', color=button_color, hovercolor=button_color)
             self.nextbutton.on_clicked(self.next_button_press)
 
         if self.curr_idx > 0:
             axprev = plt.axes([0.875, 0.085, 0.1, 0.075])
-            self.prevbutton = Button(axprev, 'Previous', color=[0.792156862745098, 0.8823529411764706, 1.0], hovercolor=[0.792156862745098, 0.8823529411764706, 1.0])
+            self.prevbutton = Button(axprev, 'Previous', color=button_color, hovercolor=button_color)
             self.prevbutton.on_clicked(self.prev_button_press)
         
         self.obj.draw()
@@ -468,6 +531,8 @@ class Viewer:
 
         self.obj = PointFixer(self.clone, self.display)
         self.populate_figure()
+        return
+
 
     def next_button_press(self,event):
 

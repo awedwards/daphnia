@@ -335,7 +335,6 @@ class Clone(object):
         self.tail_tip = tuple(edge_index[tail_tip_index, :])
         tx, ty = self.tail_tip
         
-
         cx, cy = (tx + ex)/2, (ty + ey)/2
 
         hx1, hy1 = 1.2*(ex - cx) + cx, 1.2*(ey - cy) + cy
@@ -379,6 +378,7 @@ class Clone(object):
             self.ventral_mask_endpoints[1][0] + 0.05*shift[0],
             self.ventral_mask_endpoints[1][1] + 0.05*shift[1]]
         self.anterior_mask_endpoints = [top1[0], top1[1], top2[0], top2[1]]
+        
         self.edge_copy = edge_copy
 
     def flip_dorsal_ventral(self):
@@ -547,7 +547,7 @@ class Clone(object):
         self.tail_dorsal = tuple(self.tail_dorsal)
         self.tail_spine_length = self.dist(self.tail_tip, self.tail_dorsal)
 
-    def initialize_dorsal_edge(self, im, dorsal_edge_blur = None):
+    def initialize_dorsal_edge(self, im, dorsal_edge_blur = None, edges = None):
 
         if not dorsal_edge_blur:
             dorsal_edge_blur = self.dorsal_edge_blur
@@ -556,13 +556,15 @@ class Clone(object):
         tx_d, ty_d = self.tail_dorsal
         cx, cy = self.animal_x_center, self.animal_y_center
 
-        hc = self.high_contrast(im) 
-        edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
-
-        edges = self.mask_antenna(edges, (cx, cy),
-                dorsal=self.dorsal_mask_endpoints,
-                ventral=self.ventral_mask_endpoints,
-                anterior=self.anterior_mask_endpoints)
+        if edges is None:
+            hc = self.high_contrast(im) 
+            edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
+            edges = self.mask_antenna(edges, (cx, cy),
+                    dorsal=self.dorsal_mask_endpoints,
+                    ventral=self.ventral_mask_endpoints,
+                    anterior=self.anterior_mask_endpoints)
+        
+        self.edges = edges
 
         m,b = self.line_fit(self.head, self.tail_dorsal)
 
@@ -605,19 +607,20 @@ class Clone(object):
         
         self.checkpoints = np.vstack(checkpoints)
 
-    def fit_dorsal_edge(self, im, dorsal_edge_blur = None):
+    def fit_dorsal_edge(self, im, dorsal_edge_blur = None, edges = None):
         
         if not dorsal_edge_blur:
             dorsal_edge_blur = self.dorsal_edge_blur
 
         cx, cy = self.animal_x_center, self.animal_y_center
         
-        hc = self.high_contrast(im) 
-        edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
-        edges = self.mask_antenna(edges, (cx, cy),
-                dorsal=self.dorsal_mask_endpoints,
-                ventral=self.ventral_mask_endpoints,
-                anterior=self.anterior_mask_endpoints)
+        if edges is None:
+            hc = self.high_contrast(im) 
+            edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
+            edges = self.mask_antenna(edges, (cx, cy),
+                    dorsal=self.dorsal_mask_endpoints,
+                    ventral=self.ventral_mask_endpoints,
+                    anterior=self.anterior_mask_endpoints)
 
         self.prune_checkpoints()
         checkpoints = self.checkpoints
