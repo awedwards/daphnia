@@ -400,10 +400,12 @@ class Clone(object):
          
         for i in xrange(len(edges_x)):
             for key, value in kwargs.iteritems():
-                if self.intersect([cx, cy, edges_x[i], edges_y[i]], [value[0], value[1], value[2], value[3]]):
-                    mask_x.append(edges_x[i])
-                    mask_y.append(edges_y[i])
-        
+                try:
+                    if self.intersect([cx, cy, edges_x[i], edges_y[i]], [value[0], value[1], value[2], value[3]]):
+                        mask_x.append(edges_x[i])
+                        mask_y.append(edges_y[i])
+                except TypeError:
+                    continue
         edge[[mask_x, mask_y]] = 0
         return edge
 
