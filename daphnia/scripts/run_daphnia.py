@@ -29,6 +29,8 @@ def analyze_clone(clone, im):
 
         print "Fitting and analyzing pedestal"
         clone.qscore()
+
+        clone.analyze_pedestal()
     except Exception as e:
         print "Error analyzing " + str(clone.filepath) + ": " + str(e)
 

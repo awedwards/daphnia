@@ -904,50 +904,52 @@ class Clone(object):
         # ma = window for moving average
         # w_p = lower percentile for calculating polynomial model
         # deg = degree of polynomial model
-        self.interpolate()
-        p = self.pedestal
- 
+        qi = self.qi
+        q = self.q
+        
         # smooth pedestal
-        window = int(self.self.analyze_pedestal_moving_avg_window)
-        s = pd.rolling_mean(p, window)
-        s[0:window, :] = p[0:window, :]
+        #window = int(self.self.analyze_pedestal_moving_avg_window)
+        #s = pd.rolling_mean(p, window)
+        #s[0:window, :] = p[0:window, :]
 
-        p1 = s[0, :]
-        p2 = s[-1, :]
+        #p1 = q[0, :]
+        #p2 = q[-1, :]
 
-        m = (p2[1] - p1[1])/(p2[0] - p1[0])
-        b = p1[1] - m*p1[0]
-        h = np.abs(-m*s[:,0] + s[:,1] - b)/np.sqrt(m**2 + 1)
+        #m = (p2[1] - p1[1])/(p2[0] - p1[0])
+        #b = p1[1] - m*p1[0]
+        #h = np.abs(-m*s[:,0] + s[:,1] - b)/np.sqrt(m**2 + 1)
         
-        ipeak = np.argmax(h)
-        self.peak = p[ipeak]
+        ipeak = np.argmax(q)
+        self.peak = q[ipeak]
         
-        m1 = ((s[ipeak-1,1]-s[ipeak+1,1])/(s[ipeak-1,0]-s[ipeak+1,0]))
+        #m1 = ((s[ipeak-1,1]-s[ipeak+1,1])/(s[ipeak-1,0]-s[ipeak+1,0]))
         
-        origin = [0,0]
+        #origin = [0,0]
 
-        qx, qy = self.rotate(origin, s, np.pi - np.arctan(m1))
+        #qx, qy = self.rotate(origin, s, np.pi - np.arctan(m1))
 
-        if qy[ipeak] < qy[0]:
-            qx, qy = self.rotate(origin, s, 2*np.pi - np.arctan(m1))
+        #if qy[ipeak] < qy[0]:
+        #    qx, qy = self.rotate(origin, s, 2*np.pi - np.arctan(m1))
         
-        qx -= np.min(qx)
-        qy -= np.min(qy)
+        #qx -= np.min(qx)
+        #qy -= np.min(qy)
 
-        threshold = np.percentile(qy, self.analyze_pedestal_percentile)
-        poly_train = np.where(qy<threshold)
-        roi = np.where(qy >= threshold)
+        threshold = np.percentile(q, self.analyze_pedestal_percentile)
 
-        X = np.transpose(np.vstack([ qx[poly_train], qy[poly_train] ]))
+
+        poly_train = np.where(q<threshold)
+        roi = np.where(q >= threshold)
+
+        X = np.transpose(np.vstack([ qi[poly_train], q[poly_train] ]))
         self.poly_coeff, res, _, _, _ = np.polyfit(X[:,0], X[:,1], self.analyze_pedestal_polyfit_degree, full=True)
         self.res = res[0]
 
         poly = np.poly1d(self.poly_coeff)
         
-        yy = poly(qx)
-        diff = qy - yy
+        yy = poly(qi)
+        diff = q - yy
           
-        self.calc_pedestal_area(qx[roi], diff[roi])
+        self.calc_pedestal_area(qi[roi], diff[roi])
         self.pedestal_max_height = np.max(diff[roi])
         self.get_deye_pedestalmax()
         

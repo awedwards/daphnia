@@ -119,6 +119,7 @@ class PointFixer:
         hc = self.clone.high_contrast(self.original_image)
         
         edges = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
+        
         self.edge_image  = self.clone.mask_antenna(edges, (self.clone.animal_x_center, self.clone.animal_y_center),
                 dorsal=self.clone.dorsal_mask_endpoints,
                 ventral=self.clone.ventral_mask_endpoints,
@@ -232,16 +233,17 @@ class PointFixer:
             
             self.image = self.original_image
             self.draw()
-    
-    def set_edge_blur(self, text):
+
+    def text_change(self, text):
         
         self.blurtextbox.set_val('')
 
+    def set_edge_blur(self, text):
+        
         try:
             self.edge_blur = float(text)
         except ValueError:
-            print "Invalid value for changing image blur"
-            return
+            print "Invalid value for gaussian blur sigma"
 
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
@@ -253,6 +255,8 @@ class PointFixer:
         self.edge_button_press(1)
         self.blurtextbox.set_val(text)
         
+        self.draw()
+
     def draw(self):
         
         self.display.clear()
@@ -269,7 +273,9 @@ class PointFixer:
         self.display.imshow(self.image, cmap="gray")
         
         axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
-        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev', initial=str(self.edge_blur))
+        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev')
+        self.blurtextbox.set_val(str(self.edge_blur))
+        self.blurtextbox.on_text_change(self.text_change)
         self.blurtextbox.on_submit(self.set_edge_blur)
 
         axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
@@ -407,7 +413,6 @@ class Viewer:
         file_list = []
         metadata_list = []
         print "Reading in image file list"
-
 
         with open(self.params["image_list_filepath"], "rb") as f:
             line = f.readline().strip()
