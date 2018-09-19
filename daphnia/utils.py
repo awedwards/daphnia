@@ -57,14 +57,11 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
     md['treatment'] = convert_treatment(md['treatment'])
 
     # add induction
-    try:
-        md['pond'] = season_dict[md['cloneid']]['pond']
-        md['id'] = season_dict[md['cloneid']]['id']
-        md['season'] = season_dict[md['cloneid']]['season']
-    except KeyError:
-        md['pond'] = ''
-        md['id'] = ''
-        md['season'] = ''
+    for k in ['pond', 'id', 'season']:
+        try:
+            md[k] = season_dict[md['cloneid']][k]
+        except KeyError:
+            md[k] = ''
     
     if pixel_to_mm is None:
         try:
@@ -92,12 +89,13 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
             md['manual_PF_curator'] = row['manual_PF_curator'].lower()
         except KeyError:
             md['manual_PF'] = "P"
+            md['manual_PF_reason'] = ''
             md['manual_PF_curator'] = "awe"
    
     try:
         md['inductiondate'] = induction_dict[md['barcode']]
     except KeyError:
-        pass
+        md['inductiondate'] = 'NA'
 
     if md['barcode'] in early_release:
         md['manual_PF_reason'] += "; early release"
@@ -119,7 +117,7 @@ def build_metadata_dict(filepath, curation_dict, male_list, induction_dict, seas
     except KeyError:
         md['experimenter'] = 'NA'
         md['inducer'] = 'NA'
-
+    
     return md
 
 def convert_treatment(treatment):
@@ -648,6 +646,7 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
 
             tmpdata = []
             for mf in metadata_fields:
+                
                 try:
                     if mf == "animal_dorsal_area_mm":
                         val = getattr(clone, "animal_dorsal_area")/np.power(metadata["pixel_to_mm"], 2)
@@ -667,9 +666,13 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
                         val = metadata[mf]
                 except Exception:
                     val = "nan"
+                
                 tmpdata.append(str(val))
 
+
+
             for c in cols:
+
                 val = str(getattr(clone, c))
 
                 if val is not None:
