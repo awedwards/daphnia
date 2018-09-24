@@ -365,8 +365,12 @@ class PointFixer:
         self.draw()
 
     def accept(self, event):
-
-        self.clone.accepted = not self.clone.accepted
+        
+        if self.clone.accepted == 0:
+            self.clone.accepted = 1
+        else:
+            self.clone.accepted = 0
+            
         self.draw()
 
     def getROIverts(self, verts):
@@ -410,6 +414,7 @@ class Viewer:
         
         self.params = params
         
+
         file_list = []
         metadata_list = []
         print "Reading in image file list"
@@ -424,7 +429,7 @@ class Viewer:
 
         self.data = utils.csv_to_df(self.params["input_analysis_file"])
         self.saved_data = utils.csv_to_df(self.params["output_analysis_file"])
-        
+
         try:
             self.data['accepted'] = self.saved_data.accepted
         except AttributeError:
@@ -448,7 +453,6 @@ class Viewer:
                     pass
 
                 clone.filepath = f
-
                 if int(self.params['skip_accepted']) and clone.accepted:
                     continue
                 else: clone_list.append(clone)
@@ -469,6 +473,7 @@ class Viewer:
         self.curr_idx = 0
         self.clone = self.clone_list[self.curr_idx]
         
+        self.saving = 0
         self.fig = plt.figure(figsize=(15,10))
         self.fig.patch.set_facecolor("lightgrey")
         self.display = self.fig.add_subplot(111)
@@ -485,7 +490,19 @@ class Viewer:
 
     def populate_figure(self):
         
+        self.display.clear()
+        
         button_color = [0.792156862745098, 0.8823529411764706, 1.0]
+
+
+        if self.saving == 1:
+            self.saving_text = self.fig.text(0.875, 0.879, 'Saving', fontsize=10,fontweight='bold',color=[0.933,0.463,0])
+        else:
+            try:
+                self.saving_text.remove()
+            except Exception as e:
+                print str(e)
+
 
         axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
         self.resetbutton = Button(axreset, 'Reset', color=button_color, hovercolor=button_color)
@@ -510,7 +527,7 @@ class Viewer:
         axsave = plt.axes([0.875, 0.8, 0.1, 0.075])
         self.savebutton = Button(axsave, 'Save', color=button_color, hovercolor=button_color)
         self.savebutton.on_clicked(self.save)
-
+        
         if self.curr_idx+1 < len(self.clone_list):
             axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
             self.nextbutton = Button(axnext, 'Next', color=button_color, hovercolor=button_color)
@@ -567,6 +584,8 @@ class Viewer:
     def save(self, event):
 
         self.clone_list[self.curr_idx] = self.obj.clone
+        self.saving = 1
+        self.populate_figure()
 
         with open(self.params["input_analysis_file"],"rb") as analysis_file_in, open(self.params["output_analysis_file"],"wb") as analysis_file_out:
             
@@ -575,7 +594,9 @@ class Viewer:
             while line:
                 written = False
                 for clone in self.clone_list:
+                    
                     if (line.split("\t")[0] == clone.filebase) and clone.accepted:
+
                         metadata = utils.build_metadata_dict(clone.filepath,
                                 self.curation_data,
                                 self.males_list,
@@ -614,6 +635,9 @@ class Viewer:
                     else:
                         shape_file_out.write(line)
                         line = shape_file_in.readline()
+        
+        self.saving = 0
+        self.populate_figure()
 """
         with open(self.params["input_analysis_metadata_file"],"rb") as analysis_file_in, open(self.params["output_analysis_metadata_file"],"wb") as analysis_file_out:
             
