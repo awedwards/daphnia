@@ -415,7 +415,6 @@ class Viewer:
         
         self.params = params
         
-
         file_list = []
         metadata_list = []
         print "Reading in image file list"
@@ -428,38 +427,36 @@ class Viewer:
 
         print "Reading in analysis file"
 
-        self.data = utils.csv_to_df(self.params["input_analysis_file"])
-        self.saved_data = utils.csv_to_df(self.params["output_analysis_file"])
-
         try:
-            self.data['accepted'] = self.saved_data.accepted
-        except AttributeError:
+            self.data = utils.csv_to_df(self.params["output_analysis_file"])
+        except IOError:
+            self.data = utils.csv_to_df(self.params["input_analysis_file"])
+
+        if not hasattr(self.data, 'accepted'):
             self.data['accepted'] = np.zeros(len(self.data))
        
-        if self.data['accepted'].any():
+        try:
             self.shape_data = utils.read_shape_long(self.params["output_shape_file"]).set_index('filebase')
-        else:
+        except IOError:
             self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filebase')
+        
+        all_clone_list = []
         clone_list = []
 
         for f in file_list:
-            try:
-                fileparts = f.split("/")
-                clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
-                
-                try:     # maybe the saved file does not exist, but the 'accepted' field is 1
-                    if clone.accepted:
-                        clone = utils.dfrow_to_clone(self.saved_data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
-                except Exception:
-                    pass
+            fileparts = f.split("/")
+            clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+            clone.filepath = f
+            
+            if not (int(self.params['skip_accepted']) and clone.accepted):
+                    clone_list.append(clone)
 
-                clone.filepath = f
-                if int(self.params['skip_accepted']) and clone.accepted:
-                    continue
-                else: clone_list.append(clone)
-            except Exception:
-                clone_list.append(Clone(f,**self.params))
+            all_clone_list.append(clone)
         
+        if len(clone_list) == 0:
+            print "Either image list is empty or they have all been 'accepted'"
+            return
+
         for i in xrange(len(clone_list)):
             
             clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[clone_list[i].filebase].x),
@@ -469,6 +466,7 @@ class Viewer:
             idx = self.shape_data.loc[clone_list[i].filebase].checkpoint==1
             clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
 
+        self.all_clone_list = all_clone_list
         self.clone_list = clone_list
 
         self.curr_idx = 0
@@ -501,8 +499,8 @@ class Viewer:
         else:
             try:
                 self.saving_text.remove()
-            except Exception as e:
-                print str(e)
+            except AttributeError:
+                pass
 
 
         axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
@@ -585,6 +583,12 @@ class Viewer:
     def save(self, event):
 
         self.clone_list[self.curr_idx] = self.obj.clone
+
+        for all_c in xrange(len(self.all_clone_list)):
+            for c in xrange(len(self.clone_list)):
+                if self.all_clone_list[all_c].filebase == self.clone_list[c].filebase:
+                    self.all_clone_list[all_c] = self.clone_list[c]
+
         self.saving = 1
         self.populate_figure()
 
@@ -594,8 +598,7 @@ class Viewer:
 
             while line:
                 written = False
-                for clone in self.clone_list:
-                    
+                for clone in self.all_clone_list:
                     if (line.split("\t")[0] == clone.filebase) and clone.accepted:
 
                         metadata = utils.build_metadata_dict(clone.filepath,

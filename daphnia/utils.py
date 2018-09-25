@@ -263,13 +263,7 @@ def build_clonelist(datadir, analysisdir, inductiondatadir, pondseasondir, ext="
     return clones
 
 def csv_to_df(csvfile, sep="\t"):
-   
-    try:
-        return pd.read_csv(csvfile, sep=sep)
-    except Exception as e:
-        print "Could not load csv because: " + str(e)
-    
-    return
+    return pd.read_csv(csvfile, sep=sep)
 
 def df_to_clonelist(df, datadir = None):
 
