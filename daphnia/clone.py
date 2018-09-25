@@ -89,6 +89,7 @@ class Clone(object):
 
         self.analyzed = False
         self.accepted = 0
+        self.modified = 0
 
         # parameters passed in
         self.count_animal_pixels_blur = kwargs['count_animal_pixels_blur']

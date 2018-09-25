@@ -50,6 +50,7 @@ DATA_COLS = ["filepath",
             "deyecenter_pedestalmax",
             "dorsal_residual",
             "accepted",
+            "modified",
             "automated_PF",
             "automated_PF_reason"]
 
@@ -282,14 +283,21 @@ class PointFixer:
         axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
         self.acceptbutton = Button(axaccept, 'Accept Changes', color=buttoncolor,hovercolor=buttoncolor)
         self.acceptbutton.on_clicked(self.accept)
-        
+ 
         if self.clone.accepted:
             self.acceptbutton.color = "blue"
+       
+        axmodified = plt.axes([0.875, 0.6, 0.1, 0.075])
+        self.modifiedbutton = Button(axmodified, 'Mark as Modified', color=buttoncolor, hovercolor=buttoncolor)
+        self.modifiedbutton.on_clicked(self.modified_clicked)
+        
+        if self.clone.modified:
+            self.modifiedbutton.color = "blue"
 
         axmask = plt.axes([0.025, 0.185, 0.1, 0.075])
         self.maskbutton = Button(axmask, 'Mask', color=buttoncolor, hovercolor=buttoncolor)
         self.maskbutton.on_clicked(self.mask)
-        
+
         if self.mask_clicked:
             self.maskbutton.color = "green"
 
@@ -372,6 +380,15 @@ class PointFixer:
         else:
             self.clone.accepted = 0
             
+        self.draw()
+    
+    def modified_clicked(self, event):
+
+        if self.clone.modified == 0:
+            self.clone.modified = 1
+        else:
+            self.clone.modified = 0
+
         self.draw()
 
     def getROIverts(self, verts):
