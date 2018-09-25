@@ -51,6 +51,8 @@ DATA_COLS = ["filepath",
             "dorsal_residual",
             "accepted",
             "modified",
+            "modification_notes",
+            "modifier",
             "automated_PF",
             "automated_PF_reason"]
 
@@ -120,19 +122,23 @@ class PointFixer:
 
         hc = self.clone.high_contrast(self.original_image)
         
-        edges = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
-        
-        self.edge_image  = self.clone.mask_antenna(edges, (self.clone.animal_x_center, self.clone.animal_y_center),
+        self.original_edge_image = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
+        self.edge_image = self.original_edge_image.copy()
+
+        self.edge_image  = self.clone.mask_antenna(self.edge_image, (self.clone.animal_x_center, self.clone.animal_y_center),
                 dorsal=self.clone.dorsal_mask_endpoints,
                 ventral=self.clone.ventral_mask_endpoints,
                 anterior=self.clone.anterior_mask_endpoints)
         
+        #self.edge_image = self.original_edge_image
+
         self.params = {}
         self.de = clone.dorsal_edge
         
         self.show_dorsal_edge = True
         self.add_checkpoint = False
         self.mask_clicked = False
+        self.unmask_clicked = False
         
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
@@ -153,7 +159,7 @@ class PointFixer:
             self.selected = None
             self.draw()
         
-        elif not self.mask_clicked:
+        elif not (self.mask_clicked or self.unmask_clicked):
 
             if (self.selected is None):
             
@@ -294,12 +300,19 @@ class PointFixer:
         if self.clone.modified:
             self.modifiedbutton.color = "blue"
 
-        axmask = plt.axes([0.025, 0.185, 0.1, 0.075])
+        axmask = plt.axes([0.025, 0.185, 0.05, 0.075])
         self.maskbutton = Button(axmask, 'Mask', color=buttoncolor, hovercolor=buttoncolor)
         self.maskbutton.on_clicked(self.mask)
+        
+        axunmask = plt.axes([0.075, 0.185, 0.05, 0.075])
+        self.unmaskbutton = Button(axunmask, 'Unmask', color=buttoncolor, hovercolor=buttoncolor)
+        self.unmaskbutton.on_clicked(self.unmask)
 
         if self.mask_clicked:
             self.maskbutton.color = "green"
+        
+        if self.unmask_clicked:
+            self.unmaskbutton.color = "green"
 
         if self.show_dorsal_edge:
             try:
@@ -391,7 +404,7 @@ class PointFixer:
 
         self.draw()
 
-    def getROIverts(self, verts):
+    def lasso_then_mask(self, verts):
         path = Path(verts)
             
         x,y = np.where(self.edge_image)
@@ -399,7 +412,8 @@ class PointFixer:
         for i in xrange(len(x)):
             if path.contains_point([y[i],x[i]]):
                 self.edge_image[x[i]][y[i]] = 0
-                self.image = self.edge_image
+        
+        self.image = self.edge_image
 
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur, edges=self.edge_image)
         self.fit_dorsal()
@@ -410,13 +424,49 @@ class PointFixer:
         self.mask_clicked = not self.mask_clicked
         
         if self.mask_clicked:
-            self.lasso = LassoSelector(self.display, onselect=self.getROIverts)
+            
+            self.unmask_clicked = False
+
+            self.lasso = LassoSelector(self.display, onselect=self.lasso_then_mask)
             self.edges = False
             self.edge_button_press(1)
         else:
             self.lasso = 0
+        
         self.draw()
     
+    def lasso_then_unmask(self, verts):
+        
+        path = Path(verts)
+
+        x,y = np.where(self.original_edge_image)
+
+        for i in xrange(len(x)):
+            if path.contains_point([y[i],x[i]]):
+                self.edge_image[x[i]][y[i]] = 1
+        
+        self.image = self.edge_image
+
+        self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur, edges=self.edge_image)
+        self.fit_dorsal()
+        self.draw()
+        
+    def unmask(self, event):    
+        
+        self.unmask_clicked = not self.unmask_clicked
+        
+        if self.unmask_clicked:
+            
+            self.mask_clicked = False
+            self.lasso = LassoSelector(self.display, onselect=self.lasso_then_unmask)
+            self.edges = False
+            self.edge_button_press(1)
+
+        else:
+            self.lasso = 0
+
+        self.draw()
+
 class Viewer:
 
     def __init__(self, params):
@@ -497,7 +547,6 @@ class Viewer:
         
         self.obj = PointFixer(self.clone, self.display)
         
-        lasso = LassoSelector(self.display, self.obj.getROIverts)
         self.populate_figure()
         
         self.add_checkpoint = False
