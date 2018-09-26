@@ -197,7 +197,7 @@ class PointFixer:
         self.clone.get_orientation_vectors()
         self.clone.find_head(self.original_image, **self.params)
         self.edge_blur = 1.0
-        self.blurtextbox.set_val('1.0')
+        #self.blurtextbox.set_val('1.0')
         self.clone.dorsal_blur = 1.0
         self.clone.initialize_dorsal_edge(self.original_image, **self.params)
         self.clone.fit_dorsal_edge(self.original_image, **self.params)
@@ -233,44 +233,12 @@ class PointFixer:
         self.edges = not self.edges
 
         if self.edges:
-            
             self.image = self.edge_image
             self.draw()
 
         if not self.edges:
-            
             self.image = self.original_image
             self.draw()
-
-    def text_change(self, text):
-        
-        self.blurtextbox.set_val('')
-
-    def set_edge_blur(self, text):
-        
-        try:
-            self.edge_blur = float(text)
-        except ValueError:
-            print "Invalid value for gaussian blur sigma"
-
-        self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
-        self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur = self.edge_blur, **self.params)
-        self.de = self.clone.interpolate(self.clone.dorsal_edge)
-        self.edge_image = self.clone.edges
-        self.checkpoints = self.clone.checkpoints
-        
-        self.edges = False
-        self.edge_button_press(1)
-        self.blurtextbox.set_val(text)
-        
-        self.draw()
-
-    def set_notes(self, text):
-
-        try:
-            self.clone.modification_notes = str(text)
-        except ValueError:
-            print "Invalid value for notes"
 
     def draw(self):
         
@@ -284,27 +252,17 @@ class PointFixer:
 
         if self.add_checkpoint:
             self.addcheckbutton.color = "green"
+            self.addcheckbutton.hovercolor = "green"
         
         self.display.imshow(self.image, cmap="gray")
         
-        axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
-        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev')
-        self.blurtextbox.set_val(str(self.edge_blur))
-        self.blurtextbox.on_text_change(self.text_change)
-        self.blurtextbox.on_submit(self.set_edge_blur)
-        
-
-        axmodnotes = plt.axes([0.852, 0.45, 0.125, 0.12])
-        self.notestextbox = TextBox(axmodnotes,'')
-        self.notestextbox.set_val(str(self.clone.modification_notes))
-        self.notestextbox.on_submit(self.set_notes)
-
         axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
         self.acceptbutton = Button(axaccept, 'Accept Changes', color=buttoncolor,hovercolor=buttoncolor)
         self.acceptbutton.on_clicked(self.accept)
  
         if self.clone.accepted:
             self.acceptbutton.color = "blue"
+            self.acceptbutton.hovercolor = "blue"
        
         axmodified = plt.axes([0.875, 0.6, 0.1, 0.075])
         self.modifiedbutton = Button(axmodified, 'Mark as Modified', color=buttoncolor, hovercolor=buttoncolor)
@@ -312,6 +270,7 @@ class PointFixer:
         
         if self.clone.modified:
             self.modifiedbutton.color = "blue"
+            self.modifiedbutton.hovercolor = "blue"
 
         axmask = plt.axes([0.025, 0.185, 0.05, 0.075])
         self.maskbutton = Button(axmask, 'Mask', color=buttoncolor, hovercolor=buttoncolor)
@@ -323,9 +282,11 @@ class PointFixer:
 
         if self.mask_clicked:
             self.maskbutton.color = "green"
+            self.maskbutton.hovercolor = "green"
         
         if self.unmask_clicked:
             self.unmaskbutton.color = "green"
+            self.unmaskbutton.hovercolor = "green"
 
         if self.show_dorsal_edge:
             try:
@@ -482,7 +443,7 @@ class PointFixer:
 
 class Viewer:
 
-    def __init__(self, params):
+    def __init__(self, gui_params, params):
 
         self.curation_data = utils.load_manual_curation(params['curation_csvpath'])
         self.males_list = utils.load_male_list(params['male_listpath'])
@@ -493,7 +454,9 @@ class Viewer:
         self.duplicate_data = utils.load_duplicate_data(params['duplicate_csvpath'])
         self.experimenter_data, self.inducer_data = utils.load_experimenter_data(params['experimenter_csvpath'])
         
+        self.gui_params = gui_params
         self.params = params
+        self.params.update(self.gui_params)
         
         file_list = []
         metadata_list = []
@@ -511,7 +474,7 @@ class Viewer:
             self.data = utils.csv_to_df(self.params["output_analysis_file"])
         except IOError:
             self.data = utils.csv_to_df(self.params["input_analysis_file"])
-
+        
         if not hasattr(self.data, 'accepted'):
             self.data['accepted'] = np.zeros(len(self.data))
        
@@ -559,7 +522,7 @@ class Viewer:
         self.display.axis('off')
         
         self.obj = PointFixer(self.clone, self.display)
-        
+        self.obj.clone.modifier = self.gui_params["default_modifier"]
         self.populate_figure()
         
         self.add_checkpoint = False
@@ -582,6 +545,19 @@ class Viewer:
 
         self.notes_text = self.fig.text(0.852, 0.575, 'Notes', fontsize=10, color="black") 
         
+        axmodnotes = plt.axes([0.852, 0.45, 0.125, 0.12])
+
+        initial_modnotes = str(self.obj.clone.modification_notes)
+        if initial_modnotes == "nan":
+            initial_modnotes = ""
+
+        self.notestextbox = TextBox(axmodnotes,'',initial=initial_modnotes)
+        self.notestextbox.on_submit(self.set_notes)
+        
+        axmodifier = plt.axes([0.875, 0.37, 0.1, 0.035])
+        self.modifiertextbox = TextBox(axmodifier,'Initials',initial=str(self.params['default_modifier']))
+        self.modifiertextbox.on_submit(self.change_default_modifier)
+
         axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
         self.resetbutton = Button(axreset, 'Reset', color=button_color, hovercolor=button_color)
         self.resetbutton.on_clicked(self.obj.reset_button_press)
@@ -606,6 +582,10 @@ class Viewer:
         self.savebutton = Button(axsave, 'Save', color=button_color, hovercolor=button_color)
         self.savebutton.on_clicked(self.save)
         
+        axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
+        self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev',initial=str(self.obj.edge_blur))
+        self.blurtextbox.on_submit(self.set_edge_blur)
+
         if self.curr_idx+1 < len(self.clone_list):
             axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
             self.nextbutton = Button(axnext, 'Next', color=button_color, hovercolor=button_color)
@@ -615,8 +595,44 @@ class Viewer:
             axprev = plt.axes([0.875, 0.085, 0.1, 0.075])
             self.prevbutton = Button(axprev, 'Previous', color=button_color, hovercolor=button_color)
             self.prevbutton.on_clicked(self.prev_button_press)
+         
+        self.obj.draw()
+
+    def set_notes(self, text):
+
+        try:
+            self.obj.clone.modification_notes = str(text)
+            self.obj.draw()
+        except ValueError:
+            print "Invalid value for notes"
+
+    def set_edge_blur(self, text):
+        
+        try:
+            self.obj.edge_blur = float(text)
+        except ValueError:
+            print "Invalid value for gaussian blur sigma"
+
+        self.obj.clone.initialize_dorsal_edge(self.obj.original_image, dorsal_edge_blur = self.obj.edge_blur)
+        self.obj.clone.fit_dorsal_edge(self.obj.original_image, dorsal_edge_blur = self.obj.edge_blur)
+        self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
+        self.obj.edge_image = self.obj.clone.edges
+        self.obj.checkpoints = self.obj.clone.checkpoints
+        
+        self.obj.edges = False
+        self.obj.edge_button_press(1)
         
         self.obj.draw()
+    
+    def change_default_modifier(self, text):
+        
+        self.gui_params['default_modifier'] = str(text)
+        
+        with open("gui_params.txt","w+") as f:
+            for k, v in gui_params.items():
+                f.write(str(k) + ", " + str(v) + "\n")
+
+        self.obj.clone.modifier = self.gui_params["default_modifier"]
 
     def prev_button_press(self,event):
 
@@ -631,6 +647,8 @@ class Viewer:
         self.display.axis('off')
 
         self.obj = PointFixer(self.clone, self.display)
+        self.obj.clone.modifier = self.gui_params["default_modifier"]
+
         self.populate_figure()
         return
 
@@ -650,6 +668,7 @@ class Viewer:
         try:
 
             self.obj = PointFixer(self.clone, self.display)
+            self.obj.clone.modifier = self.gui_params["default_modifier"]
             self.populate_figure()
 
         except Exception as e:
@@ -738,7 +757,7 @@ class Viewer:
 #
 
 gui_params = utils.myParse("gui_params.txt")
-gui_params.update(utils.myParse("params.txt"))
+params = utils.myParse("params.txt")
 
-v = Viewer(gui_params) 
+v = Viewer(gui_params, params)
 plt.show()
