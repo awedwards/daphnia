@@ -265,6 +265,13 @@ class PointFixer:
         
         self.draw()
 
+    def set_notes(self, text):
+
+        try:
+            self.clone.modification_notes = str(text)
+        except ValueError:
+            print "Invalid value for notes"
+
     def draw(self):
         
         self.display.clear()
@@ -285,6 +292,12 @@ class PointFixer:
         self.blurtextbox.set_val(str(self.edge_blur))
         self.blurtextbox.on_text_change(self.text_change)
         self.blurtextbox.on_submit(self.set_edge_blur)
+        
+
+        axmodnotes = plt.axes([0.852, 0.45, 0.125, 0.12])
+        self.notestextbox = TextBox(axmodnotes,'')
+        self.notestextbox.set_val(str(self.clone.modification_notes))
+        self.notestextbox.on_submit(self.set_notes)
 
         axaccept = plt.axes([0.875, 0.7, 0.1, 0.075])
         self.acceptbutton = Button(axaccept, 'Accept Changes', color=buttoncolor,hovercolor=buttoncolor)
@@ -559,7 +572,6 @@ class Viewer:
         
         button_color = [0.792156862745098, 0.8823529411764706, 1.0]
 
-
         if self.saving == 1:
             self.saving_text = self.fig.text(0.875, 0.879, 'Saving', fontsize=10,fontweight='bold',color=[0.933,0.463,0])
         else:
@@ -568,7 +580,8 @@ class Viewer:
             except AttributeError:
                 pass
 
-
+        self.notes_text = self.fig.text(0.852, 0.575, 'Notes', fontsize=10, color="black") 
+        
         axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
         self.resetbutton = Button(axreset, 'Reset', color=button_color, hovercolor=button_color)
         self.resetbutton.on_clicked(self.obj.reset_button_press)
