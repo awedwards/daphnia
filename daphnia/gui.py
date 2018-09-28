@@ -184,6 +184,8 @@ class PointFixer:
         self.clone.remove_tail_spine()
         self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
+        self.clone.qscore()
+        self.clone.analyze_pedestal()
 
     def flip_button_press(self, event):
    

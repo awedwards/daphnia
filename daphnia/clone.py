@@ -907,8 +907,8 @@ class Clone(object):
         # ma = window for moving average
         # w_p = lower percentile for calculating polynomial model
         # deg = degree of polynomial model
-        qi = self.qi
-        q = self.q
+        qi = np.array(self.qi)
+        q = np.array(self.q)
         
         # smooth pedestal
         #window = int(self.self.analyze_pedestal_moving_avg_window)
@@ -942,8 +942,9 @@ class Clone(object):
 
         poly_train = np.where(q<threshold)
         roi = np.where(q >= threshold)
-
+        
         X = np.transpose(np.vstack([ qi[poly_train], q[poly_train] ]))
+
         self.poly_coeff, res, _, _, _ = np.polyfit(X[:,0], X[:,1], self.analyze_pedestal_polyfit_degree, full=True)
         self.res = res[0]
 
