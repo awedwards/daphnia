@@ -185,31 +185,6 @@ class PointFixer:
         self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
 
-    def reset_button_press(self, event):
-        
-        if self.edges:
-            self.edge_button_press(1)
-        
-        if self.clone.flip:
-            self.clone.flip = not self.clone.flip
-        
-        self.clone.find_features(self.original_image, **self.params)
-        self.clone.get_orientation_vectors()
-        self.clone.find_head(self.original_image, **self.params)
-        self.edge_blur = 1.0
-        #self.blurtextbox.set_val('1.0')
-        self.clone.dorsal_blur = 1.0
-        self.clone.initialize_dorsal_edge(self.original_image, **self.params)
-        self.clone.fit_dorsal_edge(self.original_image, **self.params)
-        self.clone.find_tail(self.original_image)
-        self.edge_image = self.clone.edges
-        self.clone.remove_tail_spine()
-        self.de = self.clone.interpolate(self.clone.dorsal_edge)
-        self.selected = None 
-        self.checkpoints = self.clone.checkpoints
-        
-        self.draw()
-
     def flip_button_press(self, event):
    
         self.display.imshow(self.image, cmap="gray")
@@ -229,9 +204,8 @@ class PointFixer:
         self.draw()
 
     def edge_button_press(self, event):
-
+        
         self.edges = not self.edges
-
         if self.edges:
             self.image = self.edge_image
             self.draw()
@@ -558,10 +532,6 @@ class Viewer:
         self.modifiertextbox = TextBox(axmodifier,'Initials',initial=str(self.params['default_modifier']))
         self.modifiertextbox.on_submit(self.change_default_modifier)
 
-        axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
-        self.resetbutton = Button(axreset, 'Reset', color=button_color, hovercolor=button_color)
-        self.resetbutton.on_clicked(self.obj.reset_button_press)
-
         axflip = plt.axes([0.50, 0.01, 0.1, 0.075])
         self.flipbutton = Button(axflip, 'Flip', color=button_color, hovercolor=button_color)
         self.flipbutton.on_clicked(self.obj.flip_button_press)
@@ -585,6 +555,10 @@ class Viewer:
         axblur = plt.axes([0.25, 0.01, 0.1, 0.035])
         self.blurtextbox = TextBox(axblur, 'Gaussian Blur StDev',initial=str(self.obj.edge_blur))
         self.blurtextbox.on_submit(self.set_edge_blur)
+
+        axreset = plt.axes([0.40, 0.01, 0.1, 0.075])
+        self.resetbutton = Button(axreset, 'Reset', color=button_color, hovercolor=button_color)
+        self.resetbutton.on_clicked(self.reset_button_press)
 
         if self.curr_idx+1 < len(self.clone_list):
             axnext = plt.axes([0.875, 0.01, 0.1, 0.075])
@@ -677,6 +651,28 @@ class Viewer:
             if self.curr_idx < len(self.clone_list)-1:
                 self.next_button_press(event)
         
+    def reset_button_press(self, event):
+        
+        if self.obj.clone.flip:
+            self.obj.clone.flip = not self.obj.clone.flip
+        
+        self.obj.clone.find_features(self.obj.original_image, **self.obj.params)
+        self.obj.clone.get_orientation_vectors()
+        self.obj.clone.find_head(self.obj.original_image, **self.obj.params)
+        self.obj.edge_blur = 1.0
+        self.blurtextbox.set_val('1.0')
+        self.obj.clone.dorsal_blur = 1.0
+        self.obj.clone.initialize_dorsal_edge(self.obj.original_image, **self.obj.params)
+        self.obj.clone.fit_dorsal_edge(self.obj.original_image, **self.obj.params)
+        self.obj.clone.find_tail(self.obj.original_image)
+        self.obj.edge_image = self.obj.clone.edges
+        self.obj.clone.remove_tail_spine()
+        self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
+        self.obj.selected = None 
+        self.obj.checkpoints = self.obj.clone.checkpoints
+        
+        self.obj.draw()
+
 
     def save(self, event):
 
