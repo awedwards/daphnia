@@ -107,9 +107,10 @@ class PointFixer:
         
         print "Reading image"
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
+
         if im is None:
-            print "Image " + clone.filepath + " not found. Check your image list."
-            raise(IOError)
+            print "Image " + clone.filepath + " not found. Check your image filepath."
+            raise IOError
         
         self.original_image = im
         self.image = im
@@ -463,15 +464,18 @@ class Viewer:
         clone_list = []
 
         for f in file_list:
-            fileparts = f.split("/")
-            clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
-            clone.filepath = f
+            try:
+                fileparts = f.split("/")
+                clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
+                clone.filepath = f
             
-            if not (int(self.params['skip_accepted']) and clone.accepted):
+                if not (int(self.params['skip_accepted']) and clone.accepted):
                     clone_list.append(clone)
+                all_clone_list.append(clone)
 
-            all_clone_list.append(clone)
-        
+            except IndexError:
+                print "No entry found in datafile for " + str(f)
+
         if len(clone_list) == 0:
             print "Either image list is empty or they have all been 'accepted'"
             return
@@ -497,10 +501,20 @@ class Viewer:
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
         
-        self.obj = PointFixer(self.clone, self.display)
+        try: 
+            self.obj = PointFixer(self.clone, self.display)
+        except IOError:
+            
+            try:
+                self.clone.modification_notes += " Image file not found."
+            except TypeError:
+                self.clone.modification_notes = "Image file not found."
+
+            if self.curr_idx < len(self.clone_list)-1:
+                self.next_button_press(1)
+        
         self.obj.clone.modifier = self.gui_params["default_modifier"]
         self.populate_figure()
-        
         self.add_checkpoint = False
         
         return
@@ -630,8 +644,10 @@ class Viewer:
 
 
     def next_button_press(self,event):
-
-        self.clone_list[self.curr_idx] = self.obj.clone
+        try:
+            self.clone_list[self.curr_idx] = self.obj.clone
+        except AttributeError:
+            self.clone_list[self.curr_idx] = self.clone
 
         self.curr_idx += 1
         self.clone = self.clone_list[self.curr_idx]
@@ -647,8 +663,12 @@ class Viewer:
             self.obj.clone.modifier = self.gui_params["default_modifier"]
             self.populate_figure()
 
-        except Exception as e:
-            print "Error initializing " + self.clone.filepath + ": " + str(e)
+        except IOError:
+            
+            try:
+                self.clone.modification_notes += " Image file not found."
+            except TypeError:
+                self.clone.modification_notes = "Image file not found."
             
             if self.curr_idx < len(self.clone_list)-1:
                 self.next_button_press(event)
