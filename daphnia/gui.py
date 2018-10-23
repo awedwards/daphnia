@@ -253,6 +253,7 @@ class PointFixer:
         
         if self.clone.dist(val,self.clone.head) < 0.0001:
             self.clone.head = (x, y)
+            self.clone.get_animal_length()
         if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
             self.clone.tail_dorsal = (x,y)
     
