@@ -12,50 +12,6 @@ import pandas as pd
 from skimage.filters import gaussian
 from clone import Clone
 
-DATA_COLS = ["filepath",
-            "animal_dorsal_area",
-            "eye_area",
-            "animal_length",
-            "animal_x_center",
-            "animal_y_center",
-            "animal_major",
-            "animal_minor",
-            "animal_theta",
-            "eye_x_center",
-            "eye_y_center",
-            "anterior",
-            "posterior",
-            "dorsal",
-            "ventral",
-            "ant_vec",
-            "pos_vec",
-            "dor_vec",
-            "ven_vec",
-            "eye_dorsal",
-            "eye_ventral",
-            "head",
-            "tail",
-            "tail_tip",
-            "tail_base",
-            "tail_dorsal",
-            "tail_spine_length",
-            "ventral_mask_endpoints",
-            "dorsal_mask_endpoints",
-            "anterior_mask_endpoints",
-            "pedestal_max_height",
-            "pedestal_area",
-            "poly_coeff",
-            "res",
-            "peak",
-            "deyecenter_pedestalmax",
-            "dorsal_residual",
-            "accepted",
-            "modified",
-            "modification_notes",
-            "modifier",
-            "automated_PF",
-            "automated_PF_reason"]
-
 METADATA_FIELDS = ["filebase",
             "barcode",
             "cloneid",
@@ -711,6 +667,7 @@ class Viewer:
         with open(self.params["input_analysis_file"],"rb") as analysis_file_in, open(self.params["output_analysis_file"],"wb") as analysis_file_out:
             
             line = analysis_file_in.readline()
+            DATA_COLS = line.split("\t").strip()
 
             while line:
                 written = False
