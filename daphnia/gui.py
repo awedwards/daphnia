@@ -55,7 +55,8 @@ ANALYSIS_METADATA_FIELDS = ["edge_pixel_distance_threshold_multiplier",
             "dorsal_edge_blur",
             "canny_minval",
             "find_tail_blur",
-            "find_eye_blur"]
+            "find_eye_blur",
+            "flipped"]
 
 class PointFixer:
     
@@ -667,26 +668,20 @@ class Viewer:
 
         with open(self.params["input_analysis_file"],"rb") as analysis_file_in, open(self.params["output_analysis_file"],"wb") as analysis_file_out:
             
+            # read/write header and save column names
             line = analysis_file_in.readline()
-            DATA_COLS = line.split("\t").strip()
+            analysis_file_out.write(line)
+            line = line.strip()
+            DATA_COLS = line.split("\t")
+            
+            line = analysis_file_in.readline()
 
             while line:
                 written = False
                 for clone in self.all_clone_list:
                     if (line.split("\t")[0] == clone.filebase) and clone.accepted:
 
-                        metadata = utils.build_metadata_dict(clone.filepath,
-                                self.curation_data,
-                                self.males_list,
-                                self.induction_dates,
-                                self.season_data,
-                                self.early_release,
-                                self.late_release,
-                                self.duplicate_data,
-                                self.experimenter_data,
-                                self.inducer_data,
-                                pixel_to_mm=clone.pixel_to_mm)
-                        analysis_file_out.write(utils.clone_to_line(clone, DATA_COLS, metadata.keys(), metadata)+"\n")
+                        analysis_file_out.write(utils.clone_to_line(clone, DATA_COLS)+"\n")
                         written = True
 
                 if not written:    
@@ -699,9 +694,10 @@ class Viewer:
             line = shape_file_in.readline()
 
             while line:
+                filebase = line.split("\t")[0]
+                filebase = filebase.split("/")[-1]
                 for clone in self.clone_list:
-                    if (line.split("\t")[0] == clone.filepath) and clone.accepted:
-                        
+                    if (filebase == clone.filebase) and clone.accepted:
                         for i in np.arange(len(clone.dorsal_edge)):
                             if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
                                 checkpoint = 1

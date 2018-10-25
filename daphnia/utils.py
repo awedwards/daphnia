@@ -574,10 +574,13 @@ def myParse(params):
                     pass
     return params_dict
 
-def clone_to_line(clone, cols, metadata_fields, metadata):
+def clone_to_line(clone, cols, metadata_fields=None, metadata=None):
+    
+    if metadata_fields is not None:
+        cols = metadata_fields + cols
 
     tmpdata = []
-    for mf in metadata_fields:
+    for mf in cols:
         try:
             if mf == "animal_dorsal_area_mm":
                 val = getattr(clone, "animal_dorsal_area")/np.power(metadata["pixel_to_mm"], 2)
@@ -594,19 +597,13 @@ def clone_to_line(clone, cols, metadata_fields, metadata):
             elif mf == "deyecenter_pedestalmax_mm":
                 val = getattr(clone, "deyecenter_pedestalmax")/metadata["pixel_to_mm"]
             else:
-                val = metadata[mf]
+                val = getattr(clone, mf)
 
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             val = "nan"
+
         tmpdata.append(str(val))
 
-    for c in cols:
-        val = str(getattr(clone, c))
-        if val is not None:
-            tmpdata.append(val)
-        else:
-            tmpdata.append("nan")
-        
     return "\t".join(tmpdata)
 
 def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
