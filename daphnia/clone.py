@@ -550,7 +550,10 @@ class Clone(object):
             old_diffs = diffs
         self.tail = tuple(self.tail)
         self.tail_dorsal = tuple(self.tail_dorsal)
-        self.tail_spine_length = self.dist(self.tail_tip, self.tail_dorsal)
+        self.get_tail_spine_length()
+
+    def get_tail_spine_length(self):
+        self.tail_spine_length = self.dist(self.tail_tip, self.tail)
 
     def initialize_dorsal_edge(self, im, dorsal_edge_blur = None, edges = None):
 

@@ -175,7 +175,6 @@ class PointFixer:
             self.draw()
 
     def draw(self):
-        
         self.display.clear()
         
         buttoncolor=[0.792156862745098, 0.8823529411764706, 1.0]
@@ -238,25 +237,53 @@ class PointFixer:
             except TypeError:
                 pass
         
+        self.display.scatter(self.clone.tail_tip[1], self.clone.tail_tip[0],c='red')
+        self.display.text(self.clone.tail_tip[1], self.clone.tail_tip[0],'tail_tip',color='red')
+        self.display.scatter(self.clone.tail[1], self.clone.tail[0],c='red')
+        self.display.text(self.clone.tail[1], self.clone.tail[0],'tail',color='red')
+        
         self.display.axis('off')
         self.display.set_title(self.clone.filepath, color="black")
         self.display.figure.canvas.draw()
 
     def get_closest_checkpoint(self, x, y, n=1):
-
+        
         self.selected = self.checkpoints[np.argsort(np.linalg.norm(self.checkpoints-(x,y), axis=1))[0:n], :]
+        
         if n==1:
+
             self.selected = self.selected[0]
 
+            if self.clone.dist((x,y),self.selected) > self.clone.dist((x,y), self.clone.tail_tip):
+                if self.clone.dist((x,y), self.clone.tail_tip) > self.clone.dist((x,y), self.clone.tail):
+                    self.selected = self.clone.tail
+                else:
+                    self.selected = self.clone.tail_tip
+                
+            elif self.clone.dist((x,y), self.selected) > self.clone.dist((x,y), self.clone.tail):
+                if self.clone.dist((x,y), self.clone.tail_tip) < self.clone.dist((x,y), self.clone.tail):
+                    self.selected = self.clone.tail_tip
+                else:
+                    self.selected = self.clone.tail
+             
     def set_closest_checkpoint(self, x, y):
-        val = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :]
-        self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :] = (x, y)
-        
-        if self.clone.dist(val,self.clone.head) < 0.0001:
-            self.clone.head = (x, y)
+
+        if self.clone.dist(self.selected, self.clone.tail_tip) < 0.0001:
+            self.clone.tail_tip = (x, y)
+            self.clone.get_tail_spine_length()
+        elif self.clone.dist(self.selected, self.clone.tail) < 0.0001:
+            self.clone.tail = (x, y)
+            self.clone.get_tail_spine_length()
             self.clone.get_animal_length()
-        if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
-            self.clone.tail_dorsal = (x,y)
+        else:
+            val = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :]
+            self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :] = (x, y)
+            
+            if self.clone.dist(val,self.clone.head) < 0.0001:
+                self.clone.head = (x, y)
+                self.clone.get_animal_length()
+            if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
+                self.clone.tail_dorsal = (x,y)
     
     def insert_new_checkpoint(self, x, y):
         
