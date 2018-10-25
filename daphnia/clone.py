@@ -553,7 +553,7 @@ class Clone(object):
         self.get_tail_spine_length()
 
     def get_tail_spine_length(self):
-        self.tail_spine_length = self.dist(self.tail_tip, self.tail)
+        self.tail_spine_length = self.dist(self.tail_tip, self.tail_dorsal)
 
     def initialize_dorsal_edge(self, im, dorsal_edge_blur = None, edges = None):
 
