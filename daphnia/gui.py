@@ -93,6 +93,7 @@ class PointFixer:
         self.params = {}
         self.de = clone.dorsal_edge
         
+        self.do_fit_dorsal = False
         self.show_dorsal_edge = True
         self.add_checkpoint = False
         self.mask_clicked = False
@@ -101,7 +102,7 @@ class PointFixer:
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
-
+        
         self.draw()
     
     def __call__(self, event):
@@ -131,7 +132,9 @@ class PointFixer:
                 
                 self.set_closest_checkpoint(event.ydata, event.xdata)
                 self.clone.checkpoints = self.checkpoints
-                self.fit_dorsal()
+                if self.do_fit_dorsal:
+                    self.fit_dorsal()
+                    self.do_fit_dorsal = False
                 self.selected = None
             
                 self.draw()
@@ -176,7 +179,6 @@ class PointFixer:
 
     def draw(self):
         self.display.clear()
-        
         buttoncolor=[0.792156862745098, 0.8823529411764706, 1.0]
 
         axaddcheck = plt.axes([0.025, 0.085, 0.1, 0.075])
@@ -284,6 +286,7 @@ class PointFixer:
                 self.clone.get_animal_length()
             if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
                 self.clone.tail_dorsal = (x,y)
+            self.do_fit_dorsal = True 
     
     def insert_new_checkpoint(self, x, y):
         
@@ -684,7 +687,7 @@ class Viewer:
     def save(self, event):
 
         self.clone_list[self.curr_idx] = self.obj.clone
-
+        
         for all_c in xrange(len(self.all_clone_list)):
             for c in xrange(len(self.clone_list)):
                 if self.all_clone_list[all_c].filebase == self.clone_list[c].filebase:
@@ -719,24 +722,33 @@ class Viewer:
         with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
             
             line = shape_file_in.readline()
+            last_filebase = line.split("\t")[0]
 
             while line:
+                
                 filebase = line.split("\t")[0]
-                filebase = filebase.split("/")[-1]
-                for clone in self.clone_list:
-                    if (filebase == clone.filebase) and clone.accepted:
-                        for i in np.arange(len(clone.dorsal_edge)):
-                            if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
-                                checkpoint = 1
-                            else:
-                                checkpoint = 0
-                            shape_file_out.write('\t'.join([clone.filepath, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
-                            line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
+                clone = None
 
-                    else:
-                        shape_file_out.write(line)
-                        line = shape_file_in.readline()
-        
+                if not (filebase == last_filebase):
+                    for c in self.clone_list:
+                        if (filebase == c.filebase) and c.accepted:
+                            clone = c
+
+                if clone is not None:
+                    for i in np.arange(len(clone.dorsal_edge)):
+                        if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
+                            checkpoint = 1
+                        else:
+                            checkpoint = 0
+                        shape_file_out.write('\t'.join([clone.filebase, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
+                        line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
+                
+                else:
+                    shape_file_out.write(line)
+                    line = shape_file_in.readline()
+
+                last_filebase = filebase
+
         self.saving = 0
         self.populate_figure()
 """

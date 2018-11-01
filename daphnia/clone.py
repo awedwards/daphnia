@@ -632,7 +632,6 @@ class Clone(object):
 
         self.prune_checkpoints()
         checkpoints = self.checkpoints
-        
         # for some reason, calling traverse_dorsal_edge in reverse on the head portion works better
         dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[1]), np.array(checkpoints[0]))[::-1]
         
