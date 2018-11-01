@@ -685,7 +685,9 @@ class Viewer:
 
 
     def save(self, event):
-
+        
+        print "Saving..."
+        #self.params['truncate_output'] = int(self.params['truncate_output'])
         self.clone_list[self.curr_idx] = self.obj.clone
         
         for all_c in xrange(len(self.all_clone_list)):
@@ -705,7 +707,6 @@ class Viewer:
             DATA_COLS = line.split("\t")
             
             line = analysis_file_in.readline()
-
             while line:
                 written = False
                 for clone in self.all_clone_list:
@@ -713,8 +714,8 @@ class Viewer:
 
                         analysis_file_out.write(utils.clone_to_line(clone, DATA_COLS)+"\n")
                         written = True
-
-                if not written:    
+                
+                if (not written) and (not self.params['truncate_output']):
                     analysis_file_out.write(line)
 
                 line = analysis_file_in.readline()
@@ -744,13 +745,17 @@ class Viewer:
                         line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
                 
                 else:
-                    shape_file_out.write(line)
+                    if not self.params['truncate_output']:
+                        shape_file_out.write(line)
                     line = shape_file_in.readline()
 
                 last_filebase = filebase
 
         self.saving = 0
         self.populate_figure()
+
+        print "Saving done."
+
 """
         with open(self.params["input_analysis_metadata_file"],"rb") as analysis_file_in, open(self.params["output_analysis_metadata_file"],"wb") as analysis_file_out:
             
