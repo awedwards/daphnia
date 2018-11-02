@@ -434,19 +434,37 @@ class Viewer:
                 line = f.readline().strip()
 
         print "Reading in analysis file"
-
-        try:
-            self.data = utils.csv_to_df(self.params["output_analysis_file"])
-        except IOError:
-            self.data = utils.csv_to_df(self.params["input_analysis_file"])
         
+        self.data = utils.csv_to_df(self.params["input_analysis_file"])
+        
+        try:
+            saved_data = utils.csv_to_df(self.params["output_analysis_file"])
+
+            for row in saved_data.iterrows():
+                i = np.where(self.data['filebase'] == row[1]['filebase'])
+                for k,v in row[1].iteritems():
+                    self.data.loc[i[0], k] = v
+        
+        except IOError:
+            pass
+
         if not hasattr(self.data, 'accepted'):
             self.data['accepted'] = np.zeros(len(self.data))
        
+        self.shape_data = utils.read_shape_long(self.params["input_shape_file"])
+        
         try:
-            self.shape_data = utils.read_shape_long(self.params["output_shape_file"]).set_index('filebase')
+            saved_shape_data = utils.read_shape_long(self.params["output_shape_file"])
+            fbs = np.unique(saved_shape_data['filebase'])
+            
+            for fb in fbs:
+                i = (self.shape_data.filebase == fb)
+                j = (saved_shape_data.filebase == fb)
+
+                for col in saved_shape_data.columns:
+                    self.shape_data.loc[i, col] = saved_shape_data.loc[j, col].values
         except IOError:
-            self.shape_data = utils.read_shape_long(self.params["input_shape_file"]).set_index('filebase')
+            pass
         
         all_clone_list = []
         clone_list = []
@@ -469,12 +487,12 @@ class Viewer:
             return
 
         for i in xrange(len(clone_list)):
-            
-            clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[clone_list[i].filebase].x),
-                np.transpose(self.shape_data.loc[clone_list[i].filebase].y))))
-            clone_list[i].q = self.shape_data.loc[clone_list[i].filebase].q
-            clone_list[i].qi = self.shape_data.loc[clone_list[i].filebase].qi
-            idx = self.shape_data.loc[clone_list[i].filebase].checkpoint==1
+            index = (self.shape_data.filebase == clone_list[i].filebase) 
+            clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[index].x),
+                np.transpose(self.shape_data.loc[index].y))))
+            clone_list[i].q = self.shape_data.loc[index].q
+            clone_list[i].qi = self.shape_data.loc[index].qi
+            idx = self.shape_data.loc[index].checkpoint==1
             clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
 
         self.all_clone_list = all_clone_list
@@ -721,7 +739,10 @@ class Viewer:
                 line = analysis_file_in.readline()
         
         with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
-            
+            # read/write header
+            line = shape_file_in.readline()
+            shape_file_out.write(line)
+
             line = shape_file_in.readline()
             last_filebase = line.split("\t")[0]
 

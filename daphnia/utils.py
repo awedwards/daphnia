@@ -690,9 +690,7 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
 
 def read_shape_long( shape_file ):
 
-    df = pd.read_csv( shape_file, dtype={'filepath':str, 'i':float, 'x':float, 'y':float, 'qi':float, 'q':float},sep="\t")
-    filebase = [i.split("/")[-1] for i in df.filepath]
-    return df.assign(filebase=pd.Series(filebase))
+    return pd.read_csv( shape_file, dtype={'filebase':str, 'i':float, 'x':float, 'y':float, 'qi':float, 'q':float},sep="\t")
 
 def write_analysis_metadata(clone, params_dict, metadata_output_file):
     
