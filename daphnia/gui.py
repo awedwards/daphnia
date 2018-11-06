@@ -422,7 +422,7 @@ class Viewer:
         self.gui_params = gui_params
         self.params = params
         self.params.update(self.gui_params)
-        
+
         file_list = []
         metadata_list = []
         print "Reading in image file list"
@@ -490,8 +490,8 @@ class Viewer:
             index = (self.shape_data.filebase == clone_list[i].filebase) 
             clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[index].x),
                 np.transpose(self.shape_data.loc[index].y))))
-            clone_list[i].q = self.shape_data.loc[index].q
-            clone_list[i].qi = self.shape_data.loc[index].qi
+            clone_list[i].q = np.array(self.shape_data.loc[index].q)
+            clone_list[i].qi = np.array(self.shape_data.loc[index].qi)
             idx = self.shape_data.loc[index].checkpoint==1
             clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
 
@@ -536,7 +536,7 @@ class Viewer:
         else:
             try:
                 self.saving_text.remove()
-            except AttributeError:
+            except (ValueError, AttributeError):
                 pass
 
         self.notes_text = self.fig.text(0.852, 0.575, 'Notes', fontsize=10, color="black") 
