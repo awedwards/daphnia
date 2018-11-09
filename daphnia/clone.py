@@ -668,8 +668,8 @@ class Clone(object):
     def line_fit(self,p1,p2):
         
         # returns slope and y-intercept of line between two points
-
         m = (p2[1]-p1[1])/(p2[0]-p1[0])
+
         return m, p2[1] - m*p2[0]
 
     def orth(self, p, d, m, flag="center"):
@@ -786,18 +786,29 @@ class Clone(object):
         return dorsal_edge
     
     def qscore(self):
+
+        # if the tail and head happen to have the same x-position, we 
+        # get a divide-by-zero error. To avoid this, rotate 90 degrees.
+        if (self.head[0] == self.tail_dorsal[0]):
+            head = self.rotate([0,0], np.array(self.head), np.pi/4)
+            tail_dorsal = self.rotate([0,0], np.array(self.tail_dorsal), np.pi/4)
+            d = self.dorsal_edge
+            d = np.transpose(np.vstack(self.rotate([0,0], d, np.pi/4)))
+        else:
+            head = self.head
+            tail_dorsal = self.tail_dorsal
+            d = self.dorsal_edge
         
-        m1, b1 = self.line_fit(self.head, self.tail_dorsal) 
-        d = self.dorsal_edge
+        m1, b1 = self.line_fit(head, tail_dorsal) 
         self.q = np.abs(b1 + m1*d[:,0] -d[:,1])/np.sqrt(1 + m1**2)
-        
+                
         m2 = -1/m1
         b2 = d[:,1] - m2*d[:,0]
 
         x = (b2 - b1)/(m1 - m2)
         y = m1*x + b1
         
-        self.qi = np.linalg.norm(np.transpose(np.vstack([x,y])) - self.head, axis=1)/self.dist(self.head, self.tail_dorsal)        
+        self.qi = np.linalg.norm(np.transpose(np.vstack([x,y])) - head, axis=1)/self.dist(head, tail_dorsal)
         self.check_dorsal_edge_fit()
 
     def index_on_pixels(self,a):
@@ -963,8 +974,10 @@ class Clone(object):
     def rotate(self, origin, points, phi):
 
         ox, oy = origin
-        px, py = points[:,0], points[:,1]
-
+        try:
+            px, py = points[:,0], points[:,1]
+        except IndexError:
+            px, py = points
         qx = ox + np.cos(phi) * (px - ox) - np.sin(phi) * (py - oy)
         qy = oy + np.sin(phi) * (px - ox) + np.cos(phi) * (py - oy)
 
