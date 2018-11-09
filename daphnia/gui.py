@@ -102,7 +102,7 @@ class PointFixer:
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
-        
+        self.kid = self.display.figure.canvas.mpl_connect('key_press_event', self.keypress)
         self.draw()
     
     def __call__(self, event):
@@ -127,7 +127,7 @@ class PointFixer:
                 self.display.figure.canvas.draw()
         
             else:
-            
+                 
                 self.display.clear()
                 
                 self.set_closest_checkpoint(event.ydata, event.xdata)
@@ -138,6 +138,11 @@ class PointFixer:
                 self.selected = None
             
                 self.draw()
+    
+    def keypress(self,event):
+        
+        if (event.key == "backspace") or (event.key == "delete"):
+            self.delete_selected_checkpoint(event)
 
     def fit_dorsal(self):
 
