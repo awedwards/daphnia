@@ -461,13 +461,8 @@ class Viewer:
         try:
             saved_shape_data = utils.read_shape_long(self.params["output_shape_file"])
             fbs = np.unique(saved_shape_data['filebase'])
-            
-            for fb in fbs:
-                i = (self.shape_data.filebase == fb)
-                j = (saved_shape_data.filebase == fb)
-
-                for col in saved_shape_data.columns:
-                    self.shape_data.loc[i, col] = saved_shape_data.loc[j, col].values
+            self.shape_data = self.shape_data.drop(self.shape_data[self.shape_data['filebase'].isin(fbs)].index)        
+            self.shape_data = self.shape_data.append(saved_shape_data)
         except IOError:
             pass
         
