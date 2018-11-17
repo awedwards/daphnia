@@ -11,6 +11,8 @@ import numpy as np
 import pandas as pd
 from skimage.filters import gaussian
 from clone import Clone
+import warnings
+warnings.filterwarnings("ignore")
 
 METADATA_FIELDS = ["filebase",
             "barcode",
@@ -62,7 +64,7 @@ class PointFixer:
     
     def __init__(self, clone, display):
         
-        print "Reading image"
+        print "Reading image: " + clone.filebase
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
 
         if im is None:
@@ -700,7 +702,6 @@ class Viewer:
         self.obj.checkpoints = self.obj.clone.checkpoints
         
         self.obj.draw()
-
 
     def save(self, event):
         

@@ -606,9 +606,14 @@ class Clone(object):
             prune_list = []
             for k in np.arange(1, len(checkpoints)-1):
 
-                m,b = self.line_fit(checkpoints[k-1], checkpoints[k+1])
-                x,y = checkpoints[k]
-                err = np.abs(b + m*x - y)/np.sqrt(1 + m**2)
+                if (checkpoints[k-1][0] == checkpoints[k+1][0]):
+                    m = np.inf
+                    err = 0
+                else:
+                    m,b = self.line_fit(checkpoints[k-1], checkpoints[k+1])
+                    x,y = checkpoints[k]
+                    err = np.abs(b + m*x - y)/np.sqrt(1 + m**2)
+                
                 if err > 20:
                     prune = True
                     prune_list.append(k)
@@ -645,21 +650,21 @@ class Clone(object):
         dorsal_edge = np.vstack((np.array(checkpoints[0]), dorsal_edge))
         dorsal_edge = dorsal_edge[:-1,:] 
         
-        m,b = self.line_fit(checkpoints[int(0.5*len(checkpoints))], self.tail_dorsal)    
+        #m,b = self.line_fit(checkpoints[int(0.5*len(checkpoints))], self.tail_dorsal)    
 
         for k in np.arange(1,len(checkpoints)-1):
-            try:
-                x,y = checkpoints[k,:]
-                x_1, y_1 = checkpoints[k+1,:]
-                err = np.abs(b + m*x -y)/np.sqrt(1 + m**2)
-                err_plus_one = np.abs(b + m*x_1 - y_1)/np.sqrt(1 + m**2)
+            #try:
+            x,y = checkpoints[k,:]
+            x_1, y_1 = checkpoints[k+1,:]
+            #err = np.abs(b + m*x -y)/np.sqrt(1 + m**2)
+            #err_plus_one = np.abs(b + m*x_1 - y_1)/np.sqrt(1 + m**2)
 
-                if (k>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
-                    raise TypeError
-                else:
-                    dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[k,:], checkpoints[k+1,:])])
-            except TypeError:
-                continue
+            #if (k>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
+            #    raise TypeError
+            #else:
+            dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[k,:], checkpoints[k+1,:])])
+            #except TypeError:
+            #    continue
         
         self.dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, self.tail_dorsal, self.tail_tip)])    
 
@@ -1011,8 +1016,8 @@ class Clone(object):
         p = dorsal_edge
         diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)
         biggest_gaps = np.where(diff == np.max(diff))[0]
-
-        while p.shape[0] < self.pedestal_n:
+        
+        while (p.shape[0] < self.pedestal_n) and (len(biggest_gaps) > 0):
  
             i = random.choice(biggest_gaps)
             biggest_gaps[np.where(biggest_gaps==i)[0][0]+1:] += 1
@@ -1023,6 +1028,8 @@ class Clone(object):
 
             if len(biggest_gaps) == 0:
                 diff = np.linalg.norm(p[1:,:] - p[0:-1,:], axis=1)
-                biggest_gaps = np.where(diff == np.max(diff))[0]
-        
+                try:
+                    biggest_gaps = np.where(diff == np.max(diff))[0]
+                except ValueError:
+                    biggest_gaps = []
         return p
