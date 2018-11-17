@@ -575,7 +575,10 @@ class Clone(object):
         
         self.edges = edges
 
-        m,b = self.line_fit(self.head, self.tail_dorsal)
+        if (self.head[0] == self.tail_dorsal[0]):
+            m = np.inf
+        else:
+            m,b = self.line_fit(self.head, self.tail_dorsal)
 
         d = self.dist((hx,hy), (self.dorsal_mask_endpoints[0], self.dorsal_mask_endpoints[1]))
 
