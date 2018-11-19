@@ -153,6 +153,7 @@ class PointFixer:
         self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
         self.clone.tail_dorsal = self.checkpoints[-1,:]
+        self.clone.get_animal_dorsal_area()
         self.clone.qscore()
         self.clone.analyze_pedestal()
 
