@@ -152,7 +152,9 @@ class PointFixer:
         self.clone.remove_tail_spine()
         self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
+        self.clone.head = self.checkpoints[0,:]
         self.clone.tail_dorsal = self.checkpoints[-1,:]
+        self.clone.get_animal_length()
         self.clone.get_animal_dorsal_area()
         self.clone.qscore()
         self.clone.analyze_pedestal()
@@ -187,6 +189,7 @@ class PointFixer:
             self.draw()
 
     def draw(self):
+       
         self.display.clear()
         buttoncolor=[0.792156862745098, 0.8823529411764706, 1.0]
 
@@ -290,11 +293,11 @@ class PointFixer:
             val = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :]
             self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :] = (x, y)
             
-            if self.clone.dist(val,self.clone.head) < 0.0001:
-                self.clone.head = (x, y)
-                self.clone.get_animal_length()
-            if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
-                self.clone.tail_dorsal = (x,y)
+            #if self.clone.dist(val,self.clone.head) < 0.0001:
+            #    self.clone.head = (x, y)
+            #    self.clone.get_animal_length()
+            #if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
+            #    self.clone.tail_dorsal = (x,y)
             self.do_fit_dorsal = True 
     
     def insert_new_checkpoint(self, x, y):
