@@ -85,10 +85,10 @@ class PointFixer:
         self.original_edge_image = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
         self.edge_image = self.original_edge_image.copy()
 
-        self.edge_image  = self.clone.mask_antenna(self.edge_image, (self.clone.animal_x_center, self.clone.animal_y_center),
-                dorsal=self.clone.dorsal_mask_endpoints,
-                ventral=self.clone.ventral_mask_endpoints,
-                anterior=self.clone.anterior_mask_endpoints)
+        #self.edge_image  = self.clone.mask_antenna(self.edge_image, (self.clone.animal_x_center, self.clone.animal_y_center),
+        #        dorsal=self.clone.dorsal_mask_endpoints,
+        #        ventral=self.clone.ventral_mask_endpoints,
+        #        anterior=self.clone.anterior_mask_endpoints)
         
         #self.edge_image = self.original_edge_image
 
