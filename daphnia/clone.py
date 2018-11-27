@@ -568,10 +568,10 @@ class Clone(object):
         if edges is None:
             hc = self.high_contrast(im) 
             edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
-            edges = self.mask_antenna(edges, (cx, cy),
-                    dorsal=self.dorsal_mask_endpoints,
-                    ventral=self.ventral_mask_endpoints,
-                    anterior=self.anterior_mask_endpoints)
+            #edges = self.mask_antenna(edges, (cx, cy),
+            #        dorsal=self.dorsal_mask_endpoints,
+            #        ventral=self.ventral_mask_endpoints,
+            #        anterior=self.anterior_mask_endpoints)
         
         self.edges = edges
 
@@ -634,10 +634,10 @@ class Clone(object):
         if edges is None:
             hc = self.high_contrast(im) 
             edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
-            edges = self.mask_antenna(edges, (cx, cy),
-                    dorsal=self.dorsal_mask_endpoints,
-                    ventral=self.ventral_mask_endpoints,
-                    anterior=self.anterior_mask_endpoints)
+            #edges = self.mask_antenna(edges, (cx, cy),
+            #        dorsal=self.dorsal_mask_endpoints,
+            #        ventral=self.ventral_mask_endpoints,
+            #        anterior=self.anterior_mask_endpoints)
 
         self.prune_checkpoints()
         checkpoints = self.checkpoints
