@@ -657,23 +657,25 @@ class Viewer:
 
 
     def next_button_press(self,event):
+        
+        self.curr_idx += 1
+        
         try:
             self.clone_list[self.curr_idx] = self.obj.clone
         except AttributeError:
             self.clone_list[self.curr_idx] = self.clone
 
-        self.curr_idx += 1
-        self.clone = self.clone_list[self.curr_idx]
-        
-        self.fig.clear()
-
-        self.display = self.fig.add_subplot(111)
-        self.display.axis('off')
-
         try:
 
+            self.clone = self.clone_list[self.curr_idx]
+            
             self.obj = PointFixer(self.clone, self.display)
+        
+            self.fig.clear()
+            self.display = self.fig.add_subplot(111)
+            self.display.axis('off')
             self.obj.clone.modifier = self.gui_params["default_modifier"]
+
             self.populate_figure()
 
         except IOError:
@@ -685,7 +687,9 @@ class Viewer:
             
             if self.curr_idx < len(self.clone_list)-1:
                 self.next_button_press(event)
-        
+            
+            self.populate_figure()
+
     def reset_button_press(self, event):
         
         if self.obj.clone.flip:
