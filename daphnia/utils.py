@@ -628,7 +628,7 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
 
         try:
             with open(shape_output, "wb+") as f:
-                f.write( "\t".join(["filepath","i","x","y","qi","q","checkpoint"]) + "\n")
+                f.write( "\t".join(["filebase","i","x","y","qi","q","checkpoint"]) + "\n")
         except IOError:
             print "Can't find desired location for saving data"
     
@@ -681,7 +681,7 @@ def write_clone(clone, cols, metadata_fields, metadata, output, shape_output):
                         checkpoint = 1
                     else:
                         checkpoint = 0
-                    f.write('\t'.join([clone.filepath, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
+                    f.write('\t'.join([clone.filebase, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
         
         except Exception as e:
             print "Error writing dorsal edge to file: " + str(e)
