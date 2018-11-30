@@ -488,7 +488,6 @@ class Viewer:
 
             except IndexError:
                 print "No entry found in datafile for " + str(f)
-
         if len(clone_list) == 0:
             print "Either image list is empty or they have all been 'accepted'"
             return
@@ -514,7 +513,7 @@ class Viewer:
         self.display = self.fig.add_subplot(111)
         self.display.axis('off')
         
-        try: 
+        try:
             self.obj = PointFixer(self.clone, self.display)
         except IOError:
             
@@ -657,18 +656,16 @@ class Viewer:
 
 
     def next_button_press(self,event):
-        
-        self.curr_idx += 1
-        
+         
         try:
             self.clone_list[self.curr_idx] = self.obj.clone
         except AttributeError:
             self.clone_list[self.curr_idx] = self.clone
 
+        self.curr_idx += 1
+        
         try:
-
             self.clone = self.clone_list[self.curr_idx]
-            
             self.obj = PointFixer(self.clone, self.display)
         
             self.fig.clear()
@@ -684,12 +681,10 @@ class Viewer:
                 self.clone.modification_notes += " Image file not found."
             except TypeError:
                 self.clone.modification_notes = "Image file not found."
-            
             if self.curr_idx < len(self.clone_list)-1:
                 self.next_button_press(event)
-            
-            self.populate_figure()
-
+            else:
+                self.curr_idx -= 1
     def reset_button_press(self, event):
         
         if self.obj.clone.flip:
