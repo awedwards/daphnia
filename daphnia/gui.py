@@ -665,15 +665,21 @@ class Viewer:
         self.curr_idx += 1
         
         try:
+   
             self.clone = self.clone_list[self.curr_idx]
-            self.obj = PointFixer(self.clone, self.display)
-        
-            self.fig.clear()
-            self.display = self.fig.add_subplot(111)
-            self.display.axis('off')
-            self.obj.clone.modifier = self.gui_params["default_modifier"]
-
-            self.populate_figure()
+            
+            if os.path.isfile(self.clone.filepath):
+            
+                self.fig.clear()
+                self.display = self.fig.add_subplot(111)
+                self.display.axis('off')
+                self.obj.clone.modifier = self.gui_params["default_modifier"]
+                
+                self.obj = PointFixer(self.clone, self.display)
+            
+            else:
+                print "Image " + self.clone.filepath + " not found. Check your image filepath."
+                raise IOError
 
         except IOError:
             
@@ -685,6 +691,10 @@ class Viewer:
                 self.next_button_press(event)
             else:
                 self.curr_idx -= 1
+                self.clone = self.clone_list[self.curr_idx]
+
+        self.populate_figure()
+    
     def reset_button_press(self, event):
         
         if self.obj.clone.flip:
