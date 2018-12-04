@@ -338,7 +338,7 @@ class PointFixer:
         self.draw()
 
     def accept(self, event):
-        
+       
         if self.clone.accepted == 0:
             self.clone.accepted = 1
         else:
@@ -474,32 +474,35 @@ class Viewer:
             pass
         
         all_clone_list = []
-        clone_list = []
-
+        
         for f in file_list:
             try:
                 fileparts = f.split("/")
                 clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
                 clone.filepath = f
-            
-                if not (int(self.params['skip_accepted']) and clone.accepted):
-                    clone_list.append(clone)
                 all_clone_list.append(clone)
 
             except IndexError:
                 print "No entry found in datafile for " + str(f)
+
+        for i in xrange(len(all_clone_list)):
+            index = (self.shape_data.filebase == all_clone_list[i].filebase) 
+            all_clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[index].x),
+                np.transpose(self.shape_data.loc[index].y))))
+            all_clone_list[i].q = np.array(self.shape_data.loc[index].q)
+            all_clone_list[i].qi = np.array(self.shape_data.loc[index].qi)
+            idx = self.shape_data.loc[index].checkpoint==1
+            all_clone_list[i].checkpoints = all_clone_list[i].dorsal_edge[idx,:]
+       
+        clone_list = []
+        for clone in all_clone_list: 
+            if not (int(self.params['skip_accepted']) and clone.accepted):
+                clone_list.append(clone)
+
         if len(clone_list) == 0:
             print "Either image list is empty or they have all been 'accepted'"
             return
 
-        for i in xrange(len(clone_list)):
-            index = (self.shape_data.filebase == clone_list[i].filebase) 
-            clone_list[i].dorsal_edge = np.transpose(np.vstack((np.transpose(self.shape_data.loc[index].x),
-                np.transpose(self.shape_data.loc[index].y))))
-            clone_list[i].q = np.array(self.shape_data.loc[index].q)
-            clone_list[i].qi = np.array(self.shape_data.loc[index].qi)
-            idx = self.shape_data.loc[index].checkpoint==1
-            clone_list[i].checkpoints = clone_list[i].dorsal_edge[idx,:]
 
         self.all_clone_list = all_clone_list
         self.clone_list = clone_list
@@ -722,12 +725,10 @@ class Viewer:
         print "Saving..."
         #self.params['truncate_output'] = int(self.params['truncate_output'])
         self.clone_list[self.curr_idx] = self.obj.clone
-        
         for all_c in xrange(len(self.all_clone_list)):
             for c in xrange(len(self.clone_list)):
                 if self.all_clone_list[all_c].filebase == self.clone_list[c].filebase:
                     self.all_clone_list[all_c] = self.clone_list[c]
-
         self.saving = 1
         self.populate_figure()
 
@@ -767,7 +768,7 @@ class Viewer:
                 clone = None
 
                 if not (filebase == last_filebase):
-                    for c in self.clone_list:
+                    for c in self.all_clone_list:
                         if (filebase == c.filebase) and c.accepted:
                             clone = c
 
