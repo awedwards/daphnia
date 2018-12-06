@@ -723,7 +723,7 @@ class Viewer:
     def save(self, event):
         
         print "Saving..."
-        #self.params['truncate_output'] = int(self.params['truncate_output'])
+        
         self.clone_list[self.curr_idx] = self.obj.clone
         for all_c in xrange(len(self.all_clone_list)):
             for c in xrange(len(self.clone_list)):
@@ -791,23 +791,28 @@ class Viewer:
         self.saving = 0
         self.populate_figure()
 
-        print "Saving done."
-
-"""
         with open(self.params["input_analysis_metadata_file"],"rb") as analysis_file_in, open(self.params["output_analysis_metadata_file"],"wb") as analysis_file_out:
             
             line = analysis_file_in.readline()
+            analysis_file_out.write(line)
 
+            line = analysis_file_in.readline()
+            
             while line:
-                for clone in self.clone_list:
-                    if (line.split("\t")[0] == clone.filepath) and clone.accepted:
-                        analysis_file_out.write(clone_to_line(clone, DATA_COLS, METADATA_FIELDS, {m:getattr(clone,m) for m in METADATA_FIELDS}))
-                else:
+                written = False
+                for clone in self.all_clone_list:
+                    if (line.split("\t")[0] == clone.filebase) and clone.accepted:
+                        
+                        metadata = [clone.filebase] + [clone.mf for mf in ANALYSIS_METADATA_FIELDS]
+                        analysis_file_out.write(metadata.join("\t"))
+                        written = True
+                
+                if (not written) and (not self.params['truncate_output']):
                     analysis_file_out.write(line)
 
                 line = analysis_file_in.readline()
-"""
-#
+
+        print "Saving done."
 
 gui_params = utils.myParse("gui_params.txt")
 params = utils.myParse("params.txt")
