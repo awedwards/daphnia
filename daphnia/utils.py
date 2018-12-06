@@ -694,8 +694,8 @@ def read_shape_long( shape_file ):
 
 def write_analysis_metadata(clone, params_dict, metadata_output_file):
     
-    params_key_list = [] 
-    params_val_list = []
+    params_key_list = ['filebase'] 
+    params_val_list = [clone.filebase]
 
     for k in params_dict.keys():
        try:
