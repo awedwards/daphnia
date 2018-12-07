@@ -58,7 +58,7 @@ ANALYSIS_METADATA_FIELDS = ["edge_pixel_distance_threshold_multiplier",
             "canny_minval",
             "find_tail_blur",
             "find_eye_blur",
-            "flipped"]
+            "flip"]
 
 class PointFixer:
     
@@ -627,6 +627,8 @@ class Viewer:
         self.obj.edges = False
         self.obj.edge_button_press(1)
         
+        self.obj.clone.dorsal_edge_blur = self.obj.edge_blur
+
         self.obj.draw()
     
     def change_default_modifier(self, text):
@@ -803,8 +805,8 @@ class Viewer:
                 for clone in self.all_clone_list:
                     if (line.split("\t")[0] == clone.filebase) and clone.accepted:
                         
-                        metadata = [clone.filebase] + [clone.mf for mf in ANALYSIS_METADATA_FIELDS]
-                        analysis_file_out.write(metadata.join("\t"))
+                        metadata = [clone.filebase] + [str(getattr(clone,mf)) for mf in ANALYSIS_METADATA_FIELDS]
+                        analysis_file_out.write("\t".join(metadata + ["\n"]))
                         written = True
                 
                 if (not written) and (not self.params['truncate_output']):
