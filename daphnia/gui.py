@@ -101,6 +101,8 @@ class PointFixer:
         self.mask_clicked = False
         self.unmask_clicked = False
         
+        self.clone.masked_regions = []
+
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
@@ -356,6 +358,8 @@ class PointFixer:
         self.draw()
 
     def lasso_then_mask(self, verts):
+       
+        self.clone.masked_regions.append(np.vstack(verts))
         path = Path(verts)
             
         x,y = np.where(self.edge_image)
@@ -666,7 +670,6 @@ class Viewer:
             self.clone_list[self.curr_idx] = self.obj.clone
         except AttributeError:
             self.clone_list[self.curr_idx] = self.clone
-
         self.curr_idx += 1
         
         try:
@@ -814,6 +817,19 @@ class Viewer:
 
                 line = analysis_file_in.readline()
 
+        with open(self.params["masked_regions_output"],"wb") as file_out:
+        
+            file_out.write("\t".join(["filebase","i","x","y"]) + "\n")
+            
+            for clone in self.all_clone_list:
+                try:
+                    masked_regions = clone.masked_regions
+                    for i in xrange(len(masked_regions)):
+                        region = masked_regions[i]
+                        for j in xrange(region.shape[0]):
+                            file_out.write("\t".join([clone.filebase, str(i), str(region[j][0]), str(region[j][1])]) + "\n")
+                except AttributeError:
+                    continue
         print "Saving done."
 
 gui_params = utils.myParse("gui_params.txt")
