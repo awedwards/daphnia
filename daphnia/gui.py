@@ -101,7 +101,7 @@ class PointFixer:
         self.mask_clicked = False
         self.unmask_clicked = False
         
-        self.clone.masked_regions = []
+        self.clone.masking_regions = {}
 
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
@@ -359,7 +359,12 @@ class PointFixer:
 
     def lasso_then_mask(self, verts):
        
-        self.clone.masked_regions.append(np.vstack(verts))
+        try:
+            nkeys = len(self.clone.masking_regions.keys())
+            self.clone.masking_regions[nkeys] = ('m',np.vstack(verts))
+        except AttributeError:
+            self.clone.masking_regions[0] = ('m',np.vstack(verts))
+
         path = Path(verts)
             
         x,y = np.where(self.edge_image)
@@ -392,6 +397,13 @@ class PointFixer:
     
     def lasso_then_unmask(self, verts):
         
+        try:
+            nkeys = len(self.clone.masking_regions.keys())
+            self.clone.masking_regions[nkeys] = ('u',np.vstack(verts))
+        except AttributeError:
+            self.clone.masking_regions[0] = ('u',np.vstack(verts))
+
+
         path = Path(verts)
 
         x,y = np.where(self.original_edge_image)
@@ -819,15 +831,15 @@ class Viewer:
 
         with open(self.params["masked_regions_output"],"wb") as file_out:
         
-            file_out.write("\t".join(["filebase","i","x","y"]) + "\n")
+            file_out.write("\t".join(["filebase","i","x","y","masking_or_unmasking"]) + "\n")
             
             for clone in self.all_clone_list:
                 try:
-                    masked_regions = clone.masked_regions
-                    for i in xrange(len(masked_regions)):
-                        region = masked_regions[i]
+                    masking_regions = clone.masking_regions
+                    for i in xrange(len(masking_regions.keys())):
+                        m_or_u, region = masking_regions[i]
                         for j in xrange(region.shape[0]):
-                            file_out.write("\t".join([clone.filebase, str(i), str(region[j][0]), str(region[j][1])]) + "\n")
+                            file_out.write("\t".join([clone.filebase, str(i), str(region[j][0]), str(region[j][1]), m_or_u]) + "\n")
                 except AttributeError:
                     continue
         print "Saving done."
