@@ -154,8 +154,8 @@ class PointFixer:
         self.clone.remove_tail_spine()
         self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
-        self.clone.head = self.checkpoints[0,:]
-        self.clone.tail_dorsal = self.checkpoints[-1,:]
+        self.clone.head = tuple(self.checkpoints[0,:])
+        self.clone.tail_dorsal = tuple(self.checkpoints[-1,:])
         self.clone.get_animal_length()
         self.clone.get_animal_dorsal_area()
         self.clone.qscore()
@@ -374,7 +374,6 @@ class PointFixer:
                 self.edge_image[x[i]][y[i]] = 0
         
         self.image = self.edge_image
-
         self.clone.initialize_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur, edges=self.edge_image)
         self.fit_dorsal()
         self.draw()
