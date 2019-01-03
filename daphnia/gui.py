@@ -725,15 +725,18 @@ class Viewer:
         self.obj.edge_blur = 1.0
         self.blurtextbox.set_val('1.0')
         self.obj.clone.dorsal_blur = 1.0
-        self.obj.clone.initialize_dorsal_edge(self.obj.original_image, **self.obj.params)
+        self.obj.edge_image = self.obj.original_edge_image.copy()
+        if self.obj.edges:
+            self.obj.image = self.obj.edge_image
+        self.obj.clone.initialize_dorsal_edge(self.obj.original_image, edges=self.obj.edge_image, **self.obj.params)
         self.obj.clone.fit_dorsal_edge(self.obj.original_image, **self.obj.params)
         self.obj.clone.find_tail(self.obj.original_image)
-        self.obj.edge_image = self.obj.clone.edges
+        self.obj.clone.masking_regions = {}
         self.obj.clone.remove_tail_spine()
         self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
         self.obj.selected = None 
         self.obj.checkpoints = self.obj.clone.checkpoints
-        
+         
         self.obj.draw()
 
     def save(self, event):
