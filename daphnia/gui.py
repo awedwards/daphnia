@@ -836,14 +836,15 @@ class Viewer:
             file_out.write("\t".join(["filebase","i","x","y","masking_or_unmasking"]) + "\n")
             
             for clone in self.all_clone_list:
-                try:
-                    masking_regions = clone.masking_regions
-                    for i in xrange(len(masking_regions.keys())):
-                        m_or_u, region = masking_regions[i]
-                        for j in xrange(region.shape[0]):
-                            file_out.write("\t".join([clone.filebase, str(i), str(region[j][0]), str(region[j][1]), m_or_u]) + "\n")
-                except AttributeError:
-                    continue
+                if clone.accepted:
+                    try:
+                        masking_regions = clone.masking_regions
+                        for i in xrange(len(masking_regions.keys())):
+                            m_or_u, region = masking_regions[i]
+                            for j in xrange(region.shape[0]):
+                                file_out.write("\t".join([clone.filebase, str(i), str(region[j][0]), str(region[j][1]), m_or_u]) + "\n")
+                    except AttributeError:
+                        continue
         print "Saving done."
 
 gui_params = utils.myParse("gui_params.txt")
