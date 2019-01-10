@@ -149,13 +149,12 @@ class PointFixer:
             self.delete_selected_checkpoint(event)
 
     def fit_dorsal(self):
-
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur,edges=self.edge_image)
+        self.clone.tail_dorsal = tuple(self.checkpoints[-1,:])
         self.clone.remove_tail_spine()
         self.de = self.clone.interpolate(self.clone.dorsal_edge)
         self.checkpoints = self.clone.checkpoints
         self.clone.head = tuple(self.checkpoints[0,:])
-        self.clone.tail_dorsal = tuple(self.checkpoints[-1,:])
         self.clone.get_animal_length()
         self.clone.get_animal_dorsal_area()
         self.clone.qscore()
@@ -283,10 +282,11 @@ class PointFixer:
                     self.selected = self.clone.tail
              
     def set_closest_checkpoint(self, x, y):
-
+        
         if self.clone.dist(self.selected, self.clone.tail_tip) < 0.0001:
             self.clone.tail_tip = (x, y)
             self.clone.get_tail_spine_length()
+            
         elif self.clone.dist(self.selected, self.clone.tail) < 0.0001:
             self.clone.tail = (x, y)
             self.clone.get_tail_spine_length()
@@ -295,11 +295,6 @@ class PointFixer:
             val = self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :]
             self.checkpoints[np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), :] = (x, y)
             
-            #if self.clone.dist(val,self.clone.head) < 0.0001:
-            #    self.clone.head = (x, y)
-            #    self.clone.get_animal_length()
-            #if self.clone.dist(val, self.clone.tail_dorsal) < 0.0001:
-            #    self.clone.tail_dorsal = (x,y)
             self.do_fit_dorsal = True 
     
     def insert_new_checkpoint(self, x, y):
