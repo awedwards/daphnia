@@ -506,8 +506,11 @@ class Viewer:
        
         clone_list = []
         for clone in all_clone_list: 
-            if not (int(self.params['skip_accepted']) and clone.accepted):
-                clone_list.append(clone)
+            if len(clone.dorsal_edge) > 0:
+                if not (int(self.params['skip_accepted']) and clone.accepted):
+                    clone_list.append(clone)
+            else:
+                print "No shape data found for " + clone.filebase
 
         if len(clone_list) == 0:
             print "Either image list is empty or they have all been 'accepted'"
