@@ -301,8 +301,8 @@ def dfrow_to_clone(df, irow, params, datadir = None):
     row = df.iloc[irow]
     clone = Clone(row['filepath'], **params)
 
-    for k,v in row.iteritems():           
-        try:    
+    for k,v in row.iteritems(): 
+        try:
             setattr(clone, k, literal_eval(str(v)))
         except (ValueError, SyntaxError):
             setattr(clone, k, v)
@@ -694,8 +694,8 @@ def read_shape_long( shape_file ):
 
 def write_analysis_metadata(clone, params_dict, metadata_output_file):
     
-    params_key_list = ['filebase'] 
-    params_val_list = [clone.filebase]
+    params_key_list = [] 
+    params_val_list = []
 
     for k in params_dict.keys():
        try:
