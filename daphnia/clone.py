@@ -843,6 +843,10 @@ class Clone(object):
 
         idxx, idxy = np.where(edges)
         
+        # if there are no edges in the image (e.g. blur is too high), exit
+        if (len(idxx) == 0) or (len(idxy) == 0):
+            return
+
         m = (p2[1] - p1[1])/(p2[0] - p1[0])
         b = p1[1] - m*p1[0]
 
