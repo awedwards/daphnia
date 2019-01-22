@@ -85,13 +85,6 @@ class PointFixer:
         self.original_edge_image = cv2.Canny(np.array(255*gaussian(hc, self.edge_blur), dtype=np.uint8), 0, 50)/255
         self.edge_image = self.original_edge_image.copy()
 
-        #self.edge_image  = self.clone.mask_antenna(self.edge_image, (self.clone.animal_x_center, self.clone.animal_y_center),
-        #        dorsal=self.clone.dorsal_mask_endpoints,
-        #        ventral=self.clone.ventral_mask_endpoints,
-        #        anterior=self.clone.anterior_mask_endpoints)
-        
-        #self.edge_image = self.original_edge_image
-
         self.params = {}
         self.de = clone.dorsal_edge
         
@@ -765,7 +758,8 @@ class Viewer:
                     self.all_clone_list[all_c] = self.clone_list[c]
         self.saving = 1
         self.populate_figure()
-
+        
+        print "Saving analysis file"
         with open(self.params["input_analysis_file"],"rb") as analysis_file_in, open(self.params["output_analysis_file"],"wb") as analysis_file_out:
             
             # read/write header and save column names
@@ -788,43 +782,51 @@ class Viewer:
 
                 line = analysis_file_in.readline()
         
-        with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
+        print "Saving shape file"
+        #with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
+        
+        with open(self.params["output_shape_file"],"wb") as shape_file_out:
+        
             # read/write header
-            line = shape_file_in.readline()
+            #line = shape_file_in.readline()
+            line = "\t".join(["filebase","i","x","y","qx","qy","checkpoint"])
             shape_file_out.write(line)
 
-            line = shape_file_in.readline()
-            last_filebase = line.split("\t")[0]
-
-            while line:
+            #line = shape_file_in.readline()
+            #last_filebase = line.split("\t")[0]
+            
+            #while line:
                 
-                filebase = line.split("\t")[0]
-                clone = None
+                #filebase = line.split("\t")[0]
+            clone = None
 
-                if not (filebase == last_filebase):
-                    for c in self.all_clone_list:
-                        if (filebase == c.filebase) and c.accepted:
-                            clone = c
+            #if not (filebase == last_filebase):
+            for c in self.all_clone_list:
+                #if (filebase == c.filebase) and
+                if c.accepted:
+                    clone = c
 
-                if clone is not None:
-                    for i in np.arange(len(clone.dorsal_edge)):
-                        if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
-                            checkpoint = 1
-                        else:
-                            checkpoint = 0
-                        shape_file_out.write('\t'.join([clone.filebase, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
-                        line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
+            if clone is not None:
                 
-                else:
-                    if not self.params['truncate_output']:
-                        shape_file_out.write(line)
-                    line = shape_file_in.readline()
+                for i in np.arange(len(clone.dorsal_edge)):
+                    if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
+                        checkpoint = 1
+                    else:
+                        checkpoint = 0
+                    shape_file_out.write('\t'.join([clone.filebase, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
+                    #line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
 
-                last_filebase = filebase
+                #else:
+                #    if not self.params['truncate_output']:
+                #        shape_file_out.write(line)
+                    #line = shape_file_in.readline()
+                    
+                    
+                #last_filebase = filebase
 
         self.saving = 0
         self.populate_figure()
-
+        print "Saving analysis metadata file"
         with open(self.params["input_analysis_metadata_file"],"rb") as analysis_file_in, open(self.params["output_analysis_metadata_file"],"wb") as analysis_file_out:
             
             line = analysis_file_in.readline()
@@ -845,7 +847,7 @@ class Viewer:
                     analysis_file_out.write(line)
 
                 line = analysis_file_in.readline()
-
+        print "Saving masked regions file"
         with open(self.params["masked_regions_output"],"wb") as file_out:
         
             file_out.write("\t".join(["filebase","i","x","y","masking_or_unmasking"]) + "\n")
