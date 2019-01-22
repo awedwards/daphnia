@@ -789,7 +789,7 @@ class Viewer:
         
             # read/write header
             #line = shape_file_in.readline()
-            line = "\t".join(["filebase","i","x","y","qx","qy","checkpoint"])
+            line = "\t".join(["filebase","i","x","y","qx","qy","checkpoint"]) + "\n"
             shape_file_out.write(line)
 
             #line = shape_file_in.readline()
@@ -806,15 +806,15 @@ class Viewer:
                 if c.accepted:
                     clone = c
 
-            if clone is not None:
-                
-                for i in np.arange(len(clone.dorsal_edge)):
-                    if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
-                        checkpoint = 1
-                    else:
-                        checkpoint = 0
-                    shape_file_out.write('\t'.join([clone.filebase, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
-                    #line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
+                if clone is not None:
+                    
+                    for i in np.arange(len(clone.dorsal_edge)):
+                        if len(np.where((clone.checkpoints==clone.dorsal_edge[i,:]).all(axis=1))[0]) > 0:
+                            checkpoint = 1
+                        else:
+                            checkpoint = 0
+                        shape_file_out.write('\t'.join([clone.filebase, str(i), str(clone.dorsal_edge[i, 0]), str(clone.dorsal_edge[i,1]), str(clone.qi[i]), str(clone.q[i]), str(checkpoint)]) + "\n")
+                        #line = shape_file_in.readline() # so we skip past all of the lines we are overwriting
 
                 #else:
                 #    if not self.params['truncate_output']:
