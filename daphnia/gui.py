@@ -759,7 +759,6 @@ class Viewer:
         self.saving = 1
         self.populate_figure()
         
-        print "Saving analysis file"
         with open(self.params["input_analysis_file"],"rb") as analysis_file_in, open(self.params["output_analysis_file"],"wb") as analysis_file_out:
             
             # read/write header and save column names
@@ -782,14 +781,13 @@ class Viewer:
 
                 line = analysis_file_in.readline()
         
-        print "Saving shape file"
         #with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
         
         with open(self.params["output_shape_file"],"wb") as shape_file_out:
         
             # read/write header
             #line = shape_file_in.readline()
-            line = "\t".join(["filebase","i","x","y","qx","qy","checkpoint"]) + "\n"
+            line = "\t".join(["filebase","i","x","y","qi","q","checkpoint"]) + "\n"
             shape_file_out.write(line)
 
             #line = shape_file_in.readline()
