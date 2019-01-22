@@ -108,7 +108,7 @@ class PointFixer:
         self.cid = self.display.figure.canvas.mpl_connect('button_press_event',self)
         self.kid = self.display.figure.canvas.mpl_connect('key_press_event', self.keypress)
         self.draw()
-    
+        
     def __call__(self, event):
         
         if event.inaxes!=self.display.axes: return
@@ -445,6 +445,7 @@ class Viewer:
         self.gui_params = gui_params
         self.params = params
         self.params.update(self.gui_params)
+        self.auto_save_count = 0
 
         file_list = []
         metadata_list = []
@@ -688,6 +689,12 @@ class Viewer:
             self.clone_list[self.curr_idx] = self.obj.clone
         except AttributeError:
             self.clone_list[self.curr_idx] = self.clone
+        
+        self.auto_save_count += 1
+        if self.gui_params["auto_save"]:
+            if self.auto_save_count == self.gui_params["auto_save_number"]:
+                self.save(1)
+
         self.curr_idx += 1
         
         try:
