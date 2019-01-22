@@ -352,13 +352,14 @@ class PointFixer:
 
         self.draw()
 
-    def lasso_then_mask(self, verts):
+    def lasso_then_mask(self, verts, add_to_metadata=True):
        
-        try:
-            nkeys = len(self.clone.masking_regions.keys())
-            self.clone.masking_regions[nkeys] = ('m',np.vstack(verts))
-        except AttributeError:
-            self.clone.masking_regions[0] = ('m',np.vstack(verts))
+        if add_to_metadata:
+            try:
+                nkeys = len(self.clone.masking_regions.keys())
+                self.clone.masking_regions[nkeys] = ('m',np.vstack(verts))
+            except AttributeError:
+                self.clone.masking_regions[0] = ('m',np.vstack(verts))
 
         path = Path(verts)
             
@@ -389,14 +390,14 @@ class PointFixer:
         
         self.draw()
     
-    def lasso_then_unmask(self, verts):
+    def lasso_then_unmask(self, verts, add_to_metadata=True):
         
-        try:
-            nkeys = len(self.clone.masking_regions.keys())
-            self.clone.masking_regions[nkeys] = ('u',np.vstack(verts))
-        except AttributeError:
-            self.clone.masking_regions[0] = ('u',np.vstack(verts))
-
+        if add_to_metadata:
+            try:
+                nkeys = len(self.clone.masking_regions.keys())
+                self.clone.masking_regions[nkeys] = ('u',np.vstack(verts))
+            except AttributeError:
+                self.clone.masking_regions[0] = ('u',np.vstack(verts))
 
         path = Path(verts)
 
@@ -635,6 +636,14 @@ class Viewer:
         self.obj.clone.fit_dorsal_edge(self.obj.original_image, dorsal_edge_blur = self.obj.edge_blur)
         self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
         self.obj.edge_image = self.obj.clone.edges
+        
+        for region_id in xrange(len( self.obj.clone.masking_regions.keys() )):
+            region = self.obj.clone.masking_regions[region_id]
+            if region[0] == "u":
+                self.obj.lasso_then_unmask(region[1], add_to_metadata=False)
+            elif region[0] == "m":
+                self.obj.lasso_then_mask(region[1], add_to_metadata=False)
+        
         self.obj.checkpoints = self.obj.clone.checkpoints
         
         self.obj.edges = False
