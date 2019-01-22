@@ -694,6 +694,7 @@ class Viewer:
         if self.gui_params["auto_save"]:
             if self.auto_save_count == self.gui_params["auto_save_number"]:
                 self.save(1)
+                self.auto_save_count = 0
 
         self.curr_idx += 1
         
