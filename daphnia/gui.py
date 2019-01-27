@@ -94,7 +94,7 @@ class PointFixer:
         self.mask_clicked = False
         self.unmask_clicked = False
         
-        self.clone.masking_regions = {}
+        self.masked_regions = {}
 
         self.selected = None
         self.checkpoints = self.clone.checkpoints  
@@ -349,10 +349,10 @@ class PointFixer:
        
         if add_to_metadata:
             try:
-                nkeys = len(self.clone.masking_regions.keys())
-                self.clone.masking_regions[nkeys] = ('m',np.vstack(verts))
+                nkeys = len(self.masked_regions.keys())
+                self.masked_regions[nkeys] = ('m',np.vstack(verts))
             except AttributeError:
-                self.clone.masking_regions[0] = ('m',np.vstack(verts))
+                self.masked_regions[0] = ('m',np.vstack(verts))
 
         path = Path(verts)
             
@@ -387,10 +387,10 @@ class PointFixer:
         
         if add_to_metadata:
             try:
-                nkeys = len(self.clone.masking_regions.keys())
-                self.clone.masking_regions[nkeys] = ('u',np.vstack(verts))
+                nkeys = len(self.masked_regions.keys())
+                self.masked_regions[nkeys] = ('u',np.vstack(verts))
             except AttributeError:
-                self.clone.masking_regions[0] = ('u',np.vstack(verts))
+                self.masked_regions[0] = ('u',np.vstack(verts))
 
         path = Path(verts)
 
@@ -477,7 +477,12 @@ class Viewer:
             self.shape_data = self.shape_data.append(saved_shape_data)
         except IOError:
             pass
-        
+       
+        try:
+            self.masked_regions = utils.read_masked_regions_long(self.params["masked_regions_output"])
+        except IOError:
+            self.masked_regions = {}
+
         all_clone_list = []
         
         for f in file_list:
@@ -498,7 +503,7 @@ class Viewer:
             all_clone_list[i].qi = np.array(self.shape_data.loc[index].qi)
             idx = self.shape_data.loc[index].checkpoint==1
             all_clone_list[i].checkpoints = all_clone_list[i].dorsal_edge[idx,:]
-       
+             
         clone_list = []
         for clone in all_clone_list: 
             if len(clone.dorsal_edge) > 0:
@@ -510,7 +515,6 @@ class Viewer:
         if len(clone_list) == 0:
             print "Either image list is empty or they have all been 'accepted'"
             return
-
 
         self.all_clone_list = all_clone_list
         self.clone_list = clone_list
@@ -526,6 +530,13 @@ class Viewer:
         
         try:
             self.obj = PointFixer(self.clone, self.display)
+            
+            try:
+                self.obj.masked_regions = self.masked_regions[self.clone.filebase]
+                self.mask_all_regions()
+            except (AttributeError, KeyError):
+                pass
+
         except IOError:
             
             try:
@@ -631,13 +642,8 @@ class Viewer:
         self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
         self.obj.edge_image = self.obj.clone.edges
         
-        for region_id in xrange(len( self.obj.clone.masking_regions.keys() )):
-            region = self.obj.clone.masking_regions[region_id]
-            if region[0] == "u":
-                self.obj.lasso_then_unmask(region[1], add_to_metadata=False)
-            elif region[0] == "m":
-                self.obj.lasso_then_mask(region[1], add_to_metadata=False)
-        
+        self.mask_all_regions()
+
         self.obj.checkpoints = self.obj.clone.checkpoints
         
         self.obj.edges = False
@@ -647,6 +653,19 @@ class Viewer:
 
         self.obj.draw()
     
+    def mask_all_regions(self):
+        
+        try:
+            for region_id in xrange(len( self.obj.masked_regions.keys() )):
+                region = self.obj.masked_regions[region_id]
+                if region[0] == "u":
+                    self.obj.lasso_then_unmask(region[1], add_to_metadata=False)
+                elif region[0] == "m":
+                    self.obj.lasso_then_mask(region[1], add_to_metadata=False)
+        
+        except AttributeError:
+            pass
+
     def change_default_modifier(self, text):
         
         self.gui_params['default_modifier'] = str(text)
@@ -660,6 +679,7 @@ class Viewer:
     def prev_button_press(self,event):
 
         self.clone_list[self.curr_idx] = self.obj.clone
+        self.masked_regions[self.obj.clone.filebase] = self.obj.masked_regions
 
         self.curr_idx -= 1
         self.clone = self.clone_list[self.curr_idx]
@@ -671,8 +691,15 @@ class Viewer:
 
         self.obj = PointFixer(self.clone, self.display)
         self.obj.clone.modifier = self.gui_params["default_modifier"]
+        
+        try:
+            self.obj.masked_regions = self.masked_regions[self.obj.clone.filebase]
+            self.mask_all_regions()
+        except KeyError:
+            pass
 
         self.populate_figure()
+
         return
 
 
@@ -680,6 +707,7 @@ class Viewer:
          
         try:
             self.clone_list[self.curr_idx] = self.obj.clone
+            self.masked_regions[self.obj.clone] = self.obj.masked_regions
         except AttributeError:
             self.clone_list[self.curr_idx] = self.clone
         
@@ -703,7 +731,13 @@ class Viewer:
                 self.obj.clone.modifier = self.gui_params["default_modifier"]
                 
                 self.obj = PointFixer(self.clone, self.display)
-            
+                
+                try:
+                    self.obj.masked_regions = self.masked_regions[self.obj.clone.filebase]
+                    self.mask_all_regions()
+                except KeyError:
+                    pass
+
             else:
                 print "Image " + self.clone.filepath + " not found. Check your image filepath."
                 raise IOError
@@ -739,7 +773,7 @@ class Viewer:
         self.obj.clone.initialize_dorsal_edge(self.obj.original_image, edges=self.obj.edge_image, **self.obj.params)
         self.obj.clone.fit_dorsal_edge(self.obj.original_image, **self.obj.params)
         self.obj.clone.find_tail(self.obj.original_image)
-        self.obj.clone.masking_regions = {}
+        self.obj.clone.masked_regions = {}
         self.obj.clone.remove_tail_spine()
         self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
         self.obj.selected = None 
@@ -752,6 +786,8 @@ class Viewer:
         print "Saving..."
         
         self.clone_list[self.curr_idx] = self.obj.clone
+        self.masked_regions[self.obj.clone.filebase] = self.obj.masked_regions
+
         for all_c in xrange(len(self.all_clone_list)):
             for c in xrange(len(self.clone_list)):
                 if self.all_clone_list[all_c].filebase == self.clone_list[c].filebase:
@@ -782,7 +818,6 @@ class Viewer:
                 line = analysis_file_in.readline()
         
         #with open(self.params["input_shape_file"],"rb") as shape_file_in, open(self.params["output_shape_file"],"wb") as shape_file_out:
-        
         with open(self.params["output_shape_file"],"wb") as shape_file_out:
         
             # read/write header
@@ -824,7 +859,7 @@ class Viewer:
 
         self.saving = 0
         self.populate_figure()
-        print "Saving analysis metadata file"
+        
         with open(self.params["input_analysis_metadata_file"],"rb") as analysis_file_in, open(self.params["output_analysis_metadata_file"],"wb") as analysis_file_out:
             
             line = analysis_file_in.readline()
@@ -845,7 +880,7 @@ class Viewer:
                     analysis_file_out.write(line)
 
                 line = analysis_file_in.readline()
-        print "Saving masked regions file"
+        
         with open(self.params["masked_regions_output"],"wb") as file_out:
         
             file_out.write("\t".join(["filebase","i","x","y","masking_or_unmasking"]) + "\n")
@@ -853,12 +888,12 @@ class Viewer:
             for clone in self.all_clone_list:
                 if clone.accepted:
                     try:
-                        masking_regions = clone.masking_regions
-                        for i in xrange(len(masking_regions.keys())):
-                            m_or_u, region = masking_regions[i]
+                        masked_regions = self.masked_regions[clone.filebase]
+                        for i in xrange(len(masked_regions.keys())):
+                            m_or_u, region = masked_regions[i]
                             for j in xrange(region.shape[0]):
                                 file_out.write("\t".join([clone.filebase, str(i), str(region[j][0]), str(region[j][1]), m_or_u]) + "\n")
-                    except AttributeError:
+                    except KeyError:
                         continue
         print "Saving done."
 

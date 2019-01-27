@@ -692,6 +692,28 @@ def read_shape_long( shape_file ):
 
     return pd.read_csv( shape_file, dtype={'filebase':str, 'i':float, 'x':float, 'y':float, 'qi':float, 'q':float},sep="\t")
 
+def read_masked_regions_long( masked_regions_file ):
+
+    masked_regions = {}
+
+    df = pd.read_csv( masked_regions_file, dtype={'filebase':str, 'i':int, 'x':float, 'y':float, 'masking_or_unmasking':str}, sep="\t")
+    fbs = np.unique(df.filebase)
+
+    for fb in fbs:
+
+        regions = df[df.filebase==fb]
+        n_regions = np.max(regions.i)
+        masked_regions[fb] = {}
+
+        for reg in xrange(n_regions+1):
+            region = regions[regions.i == reg]
+            region_type = np.unique(region.masking_or_unmasking)[0]
+            x = region.x.values
+            y = region.y.values
+            masked_regions[fb][reg] = (region_type, np.transpose(np.vstack((x,y))))
+    
+    return masked_regions
+
 def write_analysis_metadata(clone, params_dict, metadata_output_file):
     
     params_key_list = [] 
