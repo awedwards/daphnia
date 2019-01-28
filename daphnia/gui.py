@@ -695,6 +695,7 @@ class Viewer:
         try:
             self.obj.masked_regions = self.masked_regions[self.obj.clone.filebase]
             self.mask_all_regions()
+        
         except KeyError:
             pass
 
@@ -707,7 +708,7 @@ class Viewer:
          
         try:
             self.clone_list[self.curr_idx] = self.obj.clone
-            self.masked_regions[self.obj.clone] = self.obj.masked_regions
+            self.masked_regions[self.obj.clone.filebase] = self.obj.masked_regions
         except AttributeError:
             self.clone_list[self.curr_idx] = self.clone
         
