@@ -774,7 +774,7 @@ class Viewer:
         self.obj.clone.initialize_dorsal_edge(self.obj.original_image, edges=self.obj.edge_image, **self.obj.params)
         self.obj.clone.fit_dorsal_edge(self.obj.original_image, **self.obj.params)
         self.obj.clone.find_tail(self.obj.original_image)
-        self.obj.clone.masked_regions = {}
+        self.obj.masked_regions = {}
         self.obj.clone.remove_tail_spine()
         self.obj.de = self.obj.clone.interpolate(self.obj.clone.dorsal_edge)
         self.obj.selected = None 
