@@ -1,4 +1,4 @@
-import os
+import sys,os
 import cv2
 import utils
 import matplotlib
@@ -64,7 +64,8 @@ class PointFixer:
     
     def __init__(self, clone, display):
         
-        print "Reading image: " + clone.filebase
+        print >>sys.stderr, "Reading image: " + clone.filebase
+        
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
 
         if im is None:
