@@ -63,8 +63,8 @@ ANALYSIS_METADATA_FIELDS = ["edge_pixel_distance_threshold_multiplier",
 class PointFixer:
     
     def __init__(self, clone, display):
-        
-        print >>sys.stderr, "Reading image: " + clone.filebase
+        print "Reading image: " + clone.filebase 
+        print >>sys.stderr, "Current image: " + clone.filebase
         
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
 
