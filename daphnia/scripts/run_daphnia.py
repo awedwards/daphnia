@@ -8,10 +8,12 @@ import daphnia.utils as utils
 import numpy as np
 
 def analyze_clone(clone, im):
-
+    '''
+    Takes as input a clone object and its associated image through the 'pipeline'.
+    '''
     try:
         print "Detecting eye"
-        clone.find_eye(im)
+        clone.find_eye(im)    # Detects eye pixels and makes measurements
         print "Masking antenna"
         clone.find_features(im)
         print "Estimating area"
@@ -136,7 +138,8 @@ def daphnia(params, images, plot, plot_params):
         
         if params_dict['load_metadata']:
             metadata = utils.build_metadata_dict(image_filepath, curation_data, males_list, induction_dates, season_data, early_release, late_release, duplicate_data, experimenter_data, inducer_data)
-
+        else:
+            metadata = dict()
         utils.write_clone(clone, DATA_COLS, metadata.keys(), metadata, params_dict['output'], params_dict['shape_output'])
         utils.write_analysis_metadata(clone, params_dict, params_dict['analysis_metadata_output'])
         if plot:
