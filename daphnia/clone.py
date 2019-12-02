@@ -10,12 +10,20 @@ from skimage.filters import gaussian
 import random
 
 class Clone(object):
-    
-    def __init__(self, filepath, **kwargs):
-        
-        self.filepath = filepath
-        self.filebase = filepath.split("/")[-1]
 
+    ''' Class containing attributes for an individual Daphnia clone image
+        as well as methods for detecting and analyzing features
+    '''
+
+    def __init__(self, filepath, **kwargs):
+           
+        self.filepath = filepath    # points to image
+        if os.name == "posix":    # if on Linux or Mac
+            self.filebase = filepath.split("/")[-1]
+        elif os.name == "nt":    # if on windows
+            self.filebase = filepath.split("\\")[-1]
+        # attributes are initialized with nan, which can be used as a check
+        # to see if certain steps of the pipeline have been completed
         self.animal_area = np.nan
         self.animal_dorsal_area = np.nan
         self.eye_area = np.nan
@@ -62,7 +70,7 @@ class Clone(object):
         self.dorsal_mask_endpoints = np.nan
         self.anterior_mask_endpoints = np.nan
 
-        # these are actual points on the animal
+        # coordinates of anatomical points on the animal
 
         self.eye_dorsal = np.nan
         self.eye_ventral = np.nan
@@ -93,7 +101,7 @@ class Clone(object):
         self.modification_notes = ""
         self.modifier = ""
 
-        # parameters passed in
+        # parameters for analysis are read from a file provided by the user and set
         self.count_animal_pixels_blur = kwargs['count_animal_pixels_blur']
         self.count_animal_pixels_n = kwargs['count_animal_pixels_n']
         self.count_animal_pixels_cc_threshold = kwargs['count_animal_pixels_cc_threshold']
@@ -173,6 +181,8 @@ class Clone(object):
 
     def find_eye(self, im):
 
+        # detect pixels in the image that belong to the eye of the animal
+        
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, self.find_eye_blur), dtype=np.uint8),self.canny_minval,self.canny_maxval)/255
 
@@ -180,7 +190,9 @@ class Clone(object):
         eye_im = np.where((im < np.percentile(im, 0.025)))
         ex, ey = np.median(eye_im, axis=1)
 
+        # initialize list of points whose neighbors should be checked to a list
         to_check = [(int(ex), int(ey))]
+        # initialize two empty lists for completed points and points assigned as belonging to eye
         checked = []
         eye = []
 

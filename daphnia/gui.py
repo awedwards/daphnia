@@ -427,14 +427,16 @@ class Viewer:
 
     def __init__(self, gui_params, params):
 
-        self.curation_data = utils.load_manual_curation(params['curation_csvpath'])
-        self.males_list = utils.load_male_list(params['male_listpath'])
-        self.induction_dates = utils.load_induction_data(params['induction_csvpath'])
-        self.season_data = utils.load_pond_season_data(params['pond_season_csvpath'])
-        self.early_release = utils.load_release_data(params['early_release_csvpath'])
-        self.late_release = utils.load_release_data(params['late_release_csvpath'])
-        self.duplicate_data = utils.load_duplicate_data(params['duplicate_csvpath'])
-        self.experimenter_data, self.inducer_data = utils.load_experimenter_data(params['experimenter_csvpath'])
+        if gui_params['load_metadata']:
+            
+            self.curation_data = utils.load_manual_curation(params['curation_csvpath'])
+            self.males_list = utils.load_male_list(params['male_listpath'])
+            self.induction_dates = utils.load_induction_data(params['induction_csvpath'])
+            self.season_data = utils.load_pond_season_data(params['pond_season_csvpath'])
+            self.early_release = utils.load_release_data(params['early_release_csvpath'])
+            self.late_release = utils.load_release_data(params['late_release_csvpath'])
+            self.duplicate_data = utils.load_duplicate_data(params['duplicate_csvpath'])
+            self.experimenter_data, self.inducer_data = utils.load_experimenter_data(params['experimenter_csvpath'])
         
         self.gui_params = gui_params
         self.params = params
@@ -454,7 +456,7 @@ class Viewer:
         print "Reading in analysis file"
         
         self.data = utils.csv_to_df(self.params["input_analysis_file"])
-        
+
         try:
             saved_data = utils.csv_to_df(self.params["output_analysis_file"])
 
@@ -477,6 +479,7 @@ class Viewer:
             self.shape_data = self.shape_data.drop(self.shape_data[self.shape_data['filebase'].isin(fbs)].index)        
             self.shape_data = self.shape_data.append(saved_shape_data)
         except IOError:
+            print("No output shape data")
             pass
        
         try:
@@ -488,7 +491,10 @@ class Viewer:
         
         for f in file_list:
             try:
-                fileparts = f.split("/")
+                if os.name == "nt":
+                    fileparts = f.split("\\")
+                else:
+                    fileparts = f.split("/")
                 clone = utils.dfrow_to_clone(self.data, np.where(self.data.filebase == fileparts[-1])[0][0], self.params)
                 clone.filepath = f
                 all_clone_list.append(clone)
@@ -506,7 +512,8 @@ class Viewer:
             all_clone_list[i].checkpoints = all_clone_list[i].dorsal_edge[idx,:]
              
         clone_list = []
-        for clone in all_clone_list: 
+        for clone in all_clone_list:
+            print clone.dorsal_edge
             if len(clone.dorsal_edge) > 0:
                 if not (int(self.params['skip_accepted']) and clone.accepted):
                     clone_list.append(clone)

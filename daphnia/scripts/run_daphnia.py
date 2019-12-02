@@ -45,6 +45,7 @@ def analyze_clone(clone, im):
 def daphnia(params, images, plot, plot_params):
     
     DATA_COLS = ["filepath",
+            "filebase",
             "animal_dorsal_area",
             "eye_area",
             "animal_length",
@@ -87,8 +88,7 @@ def daphnia(params, images, plot, plot_params):
             "modifier",
             "automated_PF",
             "automated_PF_reason"]
-    METADATA_FIELDS = ["filebase",
-            "barcode",
+    METADATA_FIELDS = ["barcode",
             "cloneid",
             "pond",
             "id",
