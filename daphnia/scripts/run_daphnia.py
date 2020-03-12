@@ -6,6 +6,7 @@ from daphnia.daphnia_plot import plot as daphnia_plot
 from ast import literal_eval
 import daphnia.utils as utils
 import numpy as np
+import glob
 
 def analyze_clone(clone, im):
     '''
@@ -40,7 +41,7 @@ def analyze_clone(clone, im):
 @click.option('--params', default='params.txt', help='Path to parameter file.')
 @click.option('--plot', is_flag=True, help='Generates overlay on input image')
 @click.option('--plot_params', default='plot_params.txt', help='Path to plot parameter file.')
-@click.argument('images', nargs=-1,type=click.Path(exists=True))
+@click.argument('images', nargs=-1,type=click.Path())
 
 def daphnia(params, images, plot, plot_params):
     
@@ -128,7 +129,7 @@ def daphnia(params, images, plot, plot_params):
         late_release = utils.load_release_data(params_dict['late_release_csvpath'])
         duplicate_data = utils.load_duplicate_data(params_dict['duplicate_csvpath'])
         experimenter_data, inducer_data = utils.load_experimenter_data(params_dict['experimenter_csvpath'])
-
+    images = glob.glob(str(images[0])) 
     for image_filepath in images:
         
         click.echo('Analyzing {0}'.format(image_filepath))
