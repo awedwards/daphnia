@@ -263,9 +263,14 @@ def build_clonelist(datadir, analysisdir, inductiondatadir, pondseasondir, ext="
     return clones
 
 def csv_to_df(csvfile, sep="\t"):
+    
+    # reads csv and returns dataframe
+
     return pd.read_csv(csvfile, sep=sep)
 
 def df_to_clonelist(df, datadir = None):
+
+    # creates a list of Clone objects from dataframe
 
     clones = recursivedict()
     clf = load_SVM()
@@ -297,6 +302,8 @@ def df_to_clonelist(df, datadir = None):
     return clones
 
 def dfrow_to_clone(df, irow, params, datadir = None):
+
+    # populates a clone object with data from a dataframe row
     
     row = df.iloc[irow]
     clone = Clone(row['filepath'], **params)

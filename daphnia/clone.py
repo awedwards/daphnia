@@ -13,6 +13,10 @@ class Clone(object):
 
     ''' Class containing attributes for an individual Daphnia clone image
         as well as methods for detecting and analyzing features
+
+        Required initialization variables:
+
+        filepath (str): string coding path to image of daphnia
     '''
 
     def __init__(self, filepath, **kwargs):
@@ -132,6 +136,9 @@ class Clone(object):
 
     def dist(self,x,y):
 
+        # input: n-dimensional vectors x and y (can be list, tuple or numpy array)
+        # output: euclediean distance between vectors x and y
+
         # returns euclidean distance between two vectors
         x = np.array(x)
         y = np.array(y)
@@ -140,11 +147,11 @@ class Clone(object):
     def fit_ellipse(self, im, chi_2):
         
         # fit an ellipse to the animal pixels
+        #
+        # input: image
+        # returns centroid, major and minor axes and tilt angle of the ellipse
 
         try:
-            # input: segmentation image
-            # return xcenter,ycenter,major_axis_length,minor_axis_length,theta
-
             #convert segmentation image to list of points
             points = np.array(np.where(im))
             n = points.shape[1]
@@ -180,7 +187,8 @@ class Clone(object):
             return
 
     def find_eye(self, im):
-
+        # input: segmentation image, im (numpy array)
+        #
         # detect pixels in the image that belong to the eye of the animal
         
         hc = self.high_contrast(im)
@@ -192,17 +200,30 @@ class Clone(object):
 
         # initialize list of points whose neighbors should be checked to a list
         to_check = [(int(ex), int(ey))]
-        # initialize two empty lists for completed points and points assigned as belonging to eye
+
+        # initialize two empty lists for pixels that have been checked
+        # and pixels assigned as belonging to eye
         checked = []
         eye = []
 
         count = 0
+        
+        # Flood-fill algorithm that finds the eye pixels
 
         while len(to_check)>0:
+            
+            # grab the first point in the to_check list
             pt = to_check[0]
+
+            # make sure the point and none of its neighbors belong to the eye edge
+
             if (edges[pt[0]-1, pt[1]] == 0) and (edges[pt[0]+1, pt[1]] == 0) and (edges[pt[0], pt[1]-1] == 0) and (edges[pt[0], pt[1]+1] == 0):
-                count +=1
-                eye.append((pt[0], pt[1]))
+                
+                count +=1 # keep track of how big the eye is
+                eye.append((pt[0], pt[1])) # add the current point to list of eye points
+
+                # go through all of the neighbor points and add them to the list of points to be checked
+                # if they are not already in the list
                 if ((pt[0]-1, pt[1]) not in checked) and ((pt[0]-1, pt[1]) not in to_check):
                         to_check.append((pt[0]-1, pt[1]))
                 if ((pt[0]+1, pt[1]) not in checked) and ((pt[0]+1, pt[1]) not in to_check):
@@ -212,23 +233,31 @@ class Clone(object):
                 if ((pt[0], pt[1]+1) not in checked) and ((pt[0], pt[1]+1) not in to_check):
                         to_check.append((pt[0], pt[1]+1))
             
+            # remove the current point from the to_check list and add it to the list of checked points
             checked.append(to_check.pop(0))
         
 
         self.eye_pts = np.array(eye)
+
+        # calculate the centroid of the eye and store the area
         try:
             self.eye_x_center, self.eye_y_center = np.mean(np.array(eye), axis=0)
             self.eye_area = count
         except (TypeError, IndexError):
+            # if no eye points are found, smooth the image with a higher sigma and retry
             self.find_eye_blur+=0.25
             self.find_eye(im)
         
 
     def count_animal_pixels(self, im):
+
+        # This function estimates the size of the animal
         
+        # get binary edge mask of the animal
         hc = self.high_contrast(im)
         edges = cv2.Canny(np.array(255*gaussian(hc, self.count_animal_pixels_blur), dtype=np.uint8),self.canny_minval,self.canny_maxval)/255
 
+        # retrieve landmarks
         cx, cy = self.animal_x_center, self.animal_y_center
 
         hx1, hy1 = self.ventral_mask_endpoints[0]
@@ -243,8 +272,10 @@ class Clone(object):
         maskx = []
         masky = []
 
+        # index edge pixels
         idxx, idxy = np.where(edges)
 
+        # mask edge image to get rid of antenna
         for i in np.arange(len(idxx)):
             if self.intersect([cx, cy, idxx[i], idxy[i]], [hx1, hy1, vx, vy]):
                 maskx.append(idxx[i])
@@ -292,6 +323,8 @@ class Clone(object):
         connected = False
         pts = np.array(pts)
 
+        # create connected component object by determining whether or not points are within
+        # a distance threshold of neighboring points
         for i in xrange(1, pts.shape[0]-1):
             if (self.dist(pts[i,:], pts[i-1,:]) < self.count_animal_pixels_cc_threshold) or (self.dist(pts[i+1,:],pts[i,:]) < self.count_animal_pixels_cc_threshold):
                 try:
@@ -316,14 +349,23 @@ class Clone(object):
         self.animal_area = self.area(pts[:,0], pts[:,1])
 
     def get_animal_length(self):
+        
+        # returns the length of the animal by calculating the distance
+        # between the head and the tail
 
         self.animal_length = self.dist(self.head, self.tail)
     
     def get_animal_dorsal_area(self):
 
+        # calculates the area of the dorsal region of the animal
+
         self.animal_dorsal_area = np.abs(self.area(self.dorsal_edge[:,0], self.dorsal_edge[:,1]))
 
     def find_features(self, im):
+
+        # driver script that calls all of the landmark-finding functions (except eye)
+        #
+        # input: im - raw gray-scale image
 
         ex, ey = self.eye_x_center, self.eye_y_center
 
@@ -354,18 +396,21 @@ class Clone(object):
 
         hx1, hy1 = 1.2*(ex - cx) + cx, 1.2*(ey - cy) + cy
 
+        # calculate appropriate masking lines for antenna
         vd1 = cx + self.mask_antenna_coronal_tilt*(hy1 - cy), cy + self.mask_antenna_coronal_tilt*(cx - hx1)
         vd2 = cx - self.mask_antenna_coronal_tilt*(hy1 - cy), cy - self.mask_antenna_coronal_tilt*(cx - hx1)
 
         hx2, hy2 = 1.125*(ex - cx) + cx, 1.125*(ey - cy) + cy
         top1 = hx2 + self.mask_antenna_anterior_tilt*(ey - hy2), hy2 + self.mask_antenna_anterior_tilt*(hx2 - ex)
         top2 = hx2 - self.mask_antenna_anterior_tilt*(ey - hy2), hy2 - self.mask_antenna_anterior_tilt*(hx2 - ex)
-
+      
         tail = 0.4*cx + 0.6*self.tail_tip[0], 0.4*cy + 0.6*self.tail_tip[1]
         bot1 = tail[0] + self.mask_antenna_posterior_tilt*(self.tail_tip[1] - tail[1]), tail[1] + self.mask_antenna_posterior_tilt*(self.tail_tip[0] - tail[0])
         bot2 = tail[0] - self.mask_antenna_posterior_tilt*(self.tail_tip[1] - tail[1]), tail[1] - self.mask_antenna_posterior_tilt*(self.tail_tip[0] - tail[0])
        
+        # mask antenna
         edge_copy = self.mask_antenna(edge_copy, (cx, cy), a=[hx1, hy1, vd1[0], vd1[1]], b=[hx1, hy1, vd2[0], vd2[1]], c=[top1[0], top1[1], top2[0], top2[1]])
+        # update anatomical directions after masking antenna
         self.get_anatomical_directions(edge_copy)
         
         if self.flip:
@@ -397,34 +442,54 @@ class Clone(object):
         self.edge_copy = edge_copy
 
     def flip_dorsal_ventral(self):
+
+        # hard swap of the dorsal and ventral directions. useful
+        # when they have been mislabeled
         
         tmp = self.ventral
         self.ventral = self.dorsal
         self.dorsal = tmp
 
     def mask_antenna(self, edge, center, **kwargs):
-        
+
+        # the antenna of the daphnia can be in a wide range of
+        # random positions. this function masks the antenna to
+        # downstream errors
+        #
+        # input: edge - binary edge image (numpy array)
+        #        center - centroid of the animal
+        #        
+        # returns: edge - binary edge image with antenna masked
+
         cx, cy = center
 
         edges_x = np.where(edge)[0]
         edges_y = np.where(edge)[1]
  
-        #TO DO: Vectorize
         mask_x = []
         mask_y = []
          
         for i in xrange(len(edges_x)):
             for key, value in kwargs.iteritems():
                 try:
+                    # if the line segment drawn from the animal center to the current edge pixel intersects with 
+                    # a mask line (see params), save it to the list of edges to be removed
                     if self.intersect([cx, cy, edges_x[i], edges_y[i]], [value[0], value[1], value[2], value[3]]):
                         mask_x.append(edges_x[i])
                         mask_y.append(edges_y[i])
                 except TypeError:
                     continue
+        # set masked pixels to 0
         edge[[mask_x, mask_y]] = 0
         return edge
 
     def get_anatomical_directions(self, im, flag="animal"):
+
+        # function for determining the anterior, posterior, dorsal and ventral
+        # directions of the animal relative to the body centroid using the 
+        # eye and tip of the tail as landmarks
+
+        # input: im - binary edge image (numpy array)
 
         x, y, major, minor, theta = self.fit_ellipse(im, self.fit_ellipse_chi2)
         self.animal_x_center, self.animal_y_center, self.animal_major, self.animal_minor, self.animal_theta = x, y, major, minor, theta
@@ -452,6 +517,8 @@ class Clone(object):
 
     def get_orientation_vectors(self):
 
+        # uses the anatomical points and animal center to create a vector for each direction
+
         self.pos_vec = [self.animal_x_center - self.posterior[0], self.animal_y_center - self.posterior[1]]
         self.dor_vec = [self.animal_x_center - self.dorsal[0], self.animal_y_center - self.dorsal[1]]
         self.ven_vec = [self.animal_x_center - self.ventral[0], self.animal_y_center - self.ventral[1]]
@@ -475,6 +542,9 @@ class Clone(object):
         self.eye_ventral = tuple(ep[np.argmin(np.linalg.norm(ep - (ventral_target_x, ventral_target_y), axis=1)), :])
 
     def find_head(self, im):
+
+        # finds the head point, defined by the point of the head of the animal that falls on the line 
+        # created by the tail landmark and the dorsal point of the eye
         
         # estimate tail position for now, and a better estimate will be made in get_dorsal_edge
         hc = self.high_contrast(im)
@@ -646,13 +716,10 @@ class Clone(object):
         if edges is None:
             hc = self.high_contrast(im) 
             edges = cv2.Canny(np.array(255*gaussian(hc, dorsal_edge_blur), dtype=np.uint8), 0, 50)/255
-            #edges = self.mask_antenna(edges, (cx, cy),
-            #        dorsal=self.dorsal_mask_endpoints,
-            #        ventral=self.ventral_mask_endpoints,
-            #        anterior=self.anterior_mask_endpoints)
 
         self.prune_checkpoints()
         checkpoints = self.checkpoints
+        
         # for some reason, calling traverse_dorsal_edge in reverse on the head portion works better
         dorsal_edge = self.traverse_dorsal_edge(edges, np.array(checkpoints[1]), np.array(checkpoints[0]))[::-1]
         
@@ -662,25 +729,17 @@ class Clone(object):
         dorsal_edge = np.vstack((np.array(checkpoints[0]), dorsal_edge))
         dorsal_edge = dorsal_edge[:-1,:] 
         
-        #m,b = self.line_fit(checkpoints[int(0.5*len(checkpoints))], self.tail_dorsal)    
-
         for k in np.arange(1,len(checkpoints)-1):
-            #try:
+       
             x,y = checkpoints[k,:]
             x_1, y_1 = checkpoints[k+1,:]
-            #err = np.abs(b + m*x -y)/np.sqrt(1 + m**2)
-            #err_plus_one = np.abs(b + m*x_1 - y_1)/np.sqrt(1 + m**2)
 
-            #if (k>4) and ((err > self.dist(self.head, self.tail)/16) or (err_plus_one > self.dist(self.head, self.tail)/16)):
-            #    raise TypeError
-            #else:
             dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, checkpoints[k,:], checkpoints[k+1,:])])
-            #except TypeError:
-            #    continue
         
         self.dorsal_edge = np.vstack([dorsal_edge, self.traverse_dorsal_edge(edges, self.tail_dorsal, self.tail_tip)])    
 
     def remove_tail_spine(self):
+        
         self.dorsal_edge = self.dorsal_edge[0:np.argmin(np.linalg.norm(self.dorsal_edge - self.tail_dorsal, axis=1)), :]
         self.dorsal_edge = self.interpolate(self.dorsal_edge)
         self.checkpoints[-1,:] = self.dorsal_edge[-1,:]
@@ -807,8 +866,11 @@ class Clone(object):
     
     def qscore(self):
 
+        # returns the 'qscore' of the 
+
         # if the tail and head happen to have the same x-position, we 
         # get a divide-by-zero error. To avoid this, rotate 90 degrees.
+        
         if (self.head[0] == self.tail_dorsal[0]):
             head = self.rotate([0,0], np.array(self.head), np.pi/4)
             tail_dorsal = self.rotate([0,0], np.array(self.tail_dorsal), np.pi/4)
@@ -832,20 +894,38 @@ class Clone(object):
         self.check_dorsal_edge_fit()
 
     def index_on_pixels(self,a):
+        
+        # returns the indices of positive pixels in a binary image
+
         return np.transpose(np.vstack(np.where(a)))
     
     def norm_vec(self, v):
+
+        # normalizes vectors by dividing by the max value of the vector
+
         return v/np.max(np.abs(v))
 
     def get_pedestal_max_height(self, data):
+
+        # returns the height of the pedestal at its maximum
+        #
+        # input: data - x,y positions of all pedestal points
         
         self.pedestal_max_height = np.max(data[:,1])
 
     def get_pedestal_area(self, data):
+
+        # returns the size of the pedestal in pixels
+        #
+        # input: data - x,y positions of all pedestal points
         
         self.pedestal_area = np.sum(0.5*(self.dist(self.head, self.dorsal_point)/400)*(data[1:][:,0] - data[0:-1][:,0])*(data[1:][:,1] + data[0:-1][:,1]))
         
     def get_pedestal_theta(self, data, n=200):
+
+        # returns angle of pedestal relative to body
+        #
+        # input: data - x,y positions of all pedestal points
         
         x = (n - data[np.argmax(data[:,1]), 0]) * self.dist(self.head, self.dorsal_point)/400
         hyp = self.dist((n,0), (x, np.max(data[:,1])))
@@ -853,12 +933,18 @@ class Clone(object):
 
     def find_edge2(self, edges, p1, p2):
 
+        # finds closest edge-pixel to a line segment
+
+        # input: edges - binary mask of all edges
+        #        p1, p2 - endpoints of line segment
+
         idxx, idxy = np.where(edges)
         
         # if there are no edges in the image (e.g. blur is too high), exit
         if (len(idxx) == 0) or (len(idxy) == 0):
             return
 
+        # calculate slope and intercept of line that p1 and p2 lie on
         m = (p2[1] - p1[1])/(p2[0] - p1[0])
         b = p1[1] - m*p1[0]
 
@@ -875,11 +961,23 @@ class Clone(object):
             return
 
     def high_contrast(self, im):
+
+        # applies contrast filter with clipLimit=2.0, tileGridSize (8,8)
+        #
+        # input: image (numpy array)
+        #
+        # output: high contrast image (numpy array)
         
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         return clahe.apply(im)
     
     def area(self, x, y):
+
+        # shoelace method for calculating area of a polygon
+        #
+        # input: two lists of x- and y-coordinates
+        #
+        # return: area of polygon in pixels (float)
 
         x = np.asanyarray(x)
         y = np.asanyarray(y)
@@ -891,6 +989,14 @@ class Clone(object):
         return (x * (y.take(up) - y.take(down))).sum() / 2
     
     def intersect(self, s1, s2):
+
+        # check if two line segments intersect
+
+        # input: s1 - pair of x,y coordinates for line #1
+        #        s2 - pair of x,y coordinates for line #2
+
+        # output: boolean indicating whether lines intersect
+
 
         x1, y1, x2, y2 = s1
         x3, y3, x4, y4 = s2
@@ -927,10 +1033,14 @@ class Clone(object):
                 ((x1-x2)*(y3-y4)-(y1-y2)*(x3-x4)))
 
     def norm(self, x):
+        
+        # normalizes a vector by scaling it to be between 0-1
 
         return (x - np.min(x)) / (np.max(x) - np.min(x))
     
     def check_dorsal_edge_fit(self):
+
+        # fits a 4th order polynomial to the dorsal edge and checks the error
         
         poly_coeff, residual, _, _, _ = np.polyfit(self.qi, self.q, 4, full=True)
         
@@ -941,56 +1051,37 @@ class Clone(object):
             self.automated_PF_reason = 'high dorsal residual error'
 
     def analyze_pedestal(self):
+
+        # script for taking spatially-normalized pedestal points and
+        # analyzing them. the script finds the peak of the pedestal,
+        # fits a polynomial to the points and finds the difference in
+        # height and poly fit.
     
-        # ma = window for moving average
-        # w_p = lower percentile for calculating polynomial model
-        # deg = degree of polynomial model
         qi = np.array(self.qi)
         q = np.array(self.q)
-        
-        # smooth pedestal
-        #window = int(self.self.analyze_pedestal_moving_avg_window)
-        #s = pd.rolling_mean(p, window)
-        #s[0:window, :] = p[0:window, :]
-
-        #p1 = q[0, :]
-        #p2 = q[-1, :]
-
-        #m = (p2[1] - p1[1])/(p2[0] - p1[0])
-        #b = p1[1] - m*p1[0]
-        #h = np.abs(-m*s[:,0] + s[:,1] - b)/np.sqrt(m**2 + 1)
         
         ipeak = np.argmax(q)
         self.peak = q[ipeak]
         
-        #m1 = ((s[ipeak-1,1]-s[ipeak+1,1])/(s[ipeak-1,0]-s[ipeak+1,0]))
-        
-        #origin = [0,0]
-
-        #qx, qy = self.rotate(origin, s, np.pi - np.arctan(m1))
-
-        #if qy[ipeak] < qy[0]:
-        #    qx, qy = self.rotate(origin, s, 2*np.pi - np.arctan(m1))
-        
-        #qx -= np.min(qx)
-        #qy -= np.min(qy)
-
         threshold = np.percentile(q, self.analyze_pedestal_percentile)
-
 
         poly_train = np.where(q<threshold)
         roi = np.where(q >= threshold)
         
         X = np.transpose(np.vstack([ qi[poly_train], q[poly_train] ]))
 
+        # fit polynomial to pedestal points
         self.poly_coeff, res, _, _, _ = np.polyfit(X[:,0], X[:,1], self.analyze_pedestal_polyfit_degree, full=True)
         self.res = res[0]
 
         poly = np.poly1d(self.poly_coeff)
         
+        # get difference between y-coordinates and poly fit coordinates to
+        # estimate the growth of the pedestal
         yy = poly(qi)
         diff = q - yy
           
+        # calculate stats on pedestal
         self.calc_pedestal_area(qi[roi], diff[roi])
         self.pedestal_max_height = np.max(diff[roi])
         self.get_deye_pedestalmax()
