@@ -66,6 +66,7 @@ class PointFixer:
         print "Reading image: " + clone.filebase 
         print >>sys.stderr, "Current image: " + clone.filebase
         
+        # read first image
         im = cv2.imread(clone.filepath, cv2.IMREAD_GRAYSCALE)
 
         if im is None:
@@ -78,6 +79,8 @@ class PointFixer:
         self.display = display
         self.clone = clone
         
+        # set default editing properties
+
         self.edges = False
         self.edge_blur = 1.0
 
@@ -105,8 +108,11 @@ class PointFixer:
         
     def __call__(self, event):
         
+        # handles mouse clicks given context
+
         if event.inaxes!=self.display.axes: return
         
+        # if add checkpoint is selected, handle click to add checkpoint
         if self.add_checkpoint:
             self.get_closest_checkpoint(event.ydata, event.xdata, n=2)
             self.insert_new_checkpoint(event.ydata, event.xdata)
@@ -119,13 +125,14 @@ class PointFixer:
         elif not (self.mask_clicked or self.unmask_clicked):
 
             if (self.selected is None):
-            
+                # select closest checkpoint to mouse click if none selected    
                 self.get_closest_checkpoint(event.ydata, event.xdata)
                 self.display.scatter(self.selected[1], self.selected[0], c="green")
                 self.display.figure.canvas.draw()
         
             else:
                  
+                # move checkpoint and update the dorsal fit
                 self.display.clear()
                 
                 self.set_closest_checkpoint(event.ydata, event.xdata)
@@ -143,6 +150,9 @@ class PointFixer:
             self.delete_selected_checkpoint(event)
 
     def fit_dorsal(self):
+
+        # re-fits dorsal edge and calcualtes all statistics
+
         self.clone.fit_dorsal_edge(self.original_image, dorsal_edge_blur=self.edge_blur,edges=self.edge_image)
         self.clone.tail_dorsal = tuple(self.checkpoints[-1,:])
         self.clone.remove_tail_spine()
@@ -155,6 +165,9 @@ class PointFixer:
         self.clone.analyze_pedestal()
 
     def flip_button_press(self, event):
+
+        # flips the dorsal and ventral positions and updates all downstream statistics
+        # and visualization
    
         self.display.imshow(self.image, cmap="gray")
         self.clone.flip = not self.clone.flip
@@ -173,6 +186,9 @@ class PointFixer:
         self.draw()
 
     def edge_button_press(self, event):
+
+        # switches view of the GUI from raw to edge or vice-versa,
+        # depending on what is currently being shown
         
         self.edges = not self.edges
         if self.edges:
@@ -184,6 +200,9 @@ class PointFixer:
             self.draw()
 
     def draw(self):
+
+        # updates all visualizations depending on current state of the GUI,
+        # and redraws the GUI image and buttons
        
         self.display.clear()
         buttoncolor=[0.792156862745098, 0.8823529411764706, 1.0]
@@ -256,6 +275,10 @@ class PointFixer:
         self.display.figure.canvas.draw()
 
     def get_closest_checkpoint(self, x, y, n=1):
+
+        # finds the closest dorsal checkpoint to a given point
+        #
+        # input: x, y - x and y coordinates of a point
         
         self.selected = self.checkpoints[np.argsort(np.linalg.norm(self.checkpoints-(x,y), axis=1))[0:n], :]
         
@@ -276,11 +299,20 @@ class PointFixer:
                     self.selected = self.clone.tail
              
     def set_closest_checkpoint(self, x, y):
+
+        # finds closest checkpoint to x,y
+        #
+        # input: x,y - given point
         
+        # if x,y is close enough to tail_tip, assume user
+        # wants to set the tail tip and update
+
         if self.clone.dist(self.selected, self.clone.tail_tip) < 0.0001:
             self.clone.tail_tip = (x, y)
-            self.clone.get_tail_spine_length()
+            self.clone.get_tail_spine_length()  # calculate new tail_spine_length
             
+        # if x,y is close enough to tail point, assume user
+        # wants to set the tail point and update
         elif self.clone.dist(self.selected, self.clone.tail) < 0.0001:
             self.clone.tail = (x, y)
             self.clone.get_tail_spine_length()
@@ -292,6 +324,8 @@ class PointFixer:
             self.do_fit_dorsal = True 
     
     def insert_new_checkpoint(self, x, y):
+
+        # inserts a new checkpoint at x,y
         
         idx1 = np.argwhere(self.checkpoints == self.selected[0])[0][0]
         idx2 = np.argwhere(self.checkpoints == self.selected[1])[0][0]
@@ -310,6 +344,8 @@ class PointFixer:
             self.checkpoints = np.vstack([self.checkpoints[0:np.min([idx1, idx2])+1,:], (x, y), self.checkpoints[np.max([idx1, idx2]):]])
 
     def delete_selected_checkpoint(self, event):
+
+        # removes the selected checkpoint from the list
 
         if self.selected is not None:
             self.checkpoints = np.delete(self.checkpoints, np.argmin(np.linalg.norm(self.checkpoints - self.selected, axis=1)), axis=0)
@@ -348,6 +384,8 @@ class PointFixer:
 
     def lasso_then_mask(self, verts, add_to_metadata=True):
        
+        # takes arbitrary ROI given by user and masks out edge pixels
+
         if add_to_metadata:
             try:
                 nkeys = len(self.masked_regions.keys())
@@ -425,8 +463,11 @@ class PointFixer:
 
 class Viewer:
 
+    # GUI object
+
     def __init__(self, gui_params, params):
 
+        # loads metadata from available xls files
         if gui_params['load_metadata']:
             
             self.curation_data = utils.load_manual_curation(params['curation_csvpath'])
@@ -438,6 +479,7 @@ class Viewer:
             self.duplicate_data = utils.load_duplicate_data(params['duplicate_csvpath'])
             self.experimenter_data, self.inducer_data = utils.load_experimenter_data(params['experimenter_csvpath'])
         
+        # loads in default params from txt files
         self.gui_params = gui_params
         self.params = params
         self.params.update(self.gui_params)
@@ -562,6 +604,8 @@ class Viewer:
         return
 
     def populate_figure(self):
+
+        # updates GUI button placement, colors, etc
         
         self.display.clear()
         
@@ -632,6 +676,8 @@ class Viewer:
 
     def set_notes(self, text):
 
+        # saves any viable, user-added notes in text field
+
         try:
             self.obj.clone.modification_notes = str(text)
             self.obj.draw()
@@ -639,6 +685,8 @@ class Viewer:
             print "Invalid value for notes"
 
     def set_edge_blur(self, text):
+
+        # sets the edge blur value, updates the binary edge image
         
         try:
             self.obj.edge_blur = float(text)
@@ -686,6 +734,8 @@ class Viewer:
 
     def prev_button_press(self,event):
 
+        # moves to the previous image in the list relative to the current clone
+
         self.clone_list[self.curr_idx] = self.obj.clone
         self.masked_regions[self.obj.clone.filebase] = self.obj.masked_regions
 
@@ -713,6 +763,8 @@ class Viewer:
 
 
     def next_button_press(self,event):
+
+        # moves to the next image in the list
          
         try:
             self.clone_list[self.curr_idx] = self.obj.clone
@@ -767,6 +819,8 @@ class Viewer:
     
     def reset_button_press(self, event):
         
+        # resets current clone to default and redraws
+
         if self.obj.clone.flip:
             self.obj.clone.flip = not self.obj.clone.flip
         
@@ -791,6 +845,8 @@ class Viewer:
         self.obj.draw()
 
     def save(self, event):
+
+        # saves all data (modified and unmodofied) to new csv
         
         print "Saving..."
         
